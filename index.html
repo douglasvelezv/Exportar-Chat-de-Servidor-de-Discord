@@ -11,6 +11,21 @@
 html{scroll-behavior:smooth}
 *{scrollbar-width:thin;scrollbar-color:var(--ln) transparent}
 ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:var(--ln);border-radius:8px}::-webkit-scrollbar-track{background:transparent}
+[hidden]{display:none!important}
+#statusWrap{padding:12px 20px 0}#statusWrap #status{margin-bottom:0}
+.steps{display:flex;align-items:center;justify-content:center;gap:10px;padding:26px 16px 8px;flex-wrap:wrap}
+.steps>i{width:36px;height:2px;background:var(--ln)}
+.st{display:flex;align-items:center;gap:8px;color:var(--mu)}
+.st b{width:30px;height:30px;border-radius:50%;background:var(--bg4);display:grid;place-items:center;font-size:14px;color:var(--tx)}
+.st small{display:block;font-size:11px}.st span{font-size:14px;line-height:1.2}
+.st.on{color:var(--tx)}.st.on b{background:var(--ac);color:#fff}
+.st.done b{background:var(--ok);color:#fff}
+.wcard{max-width:640px;margin:14px auto;background:var(--bg2);border:1px solid var(--ln);border-radius:14px;padding:22px 24px;box-shadow:0 8px 30px #0003}
+.step h2{margin:0 0 4px}.step>.hint{margin:0 0 16px}
+.fields{display:grid;gap:14px}.fields>*{min-width:0}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px}
+.nav{display:flex;align-items:center;gap:8px;margin-top:22px;flex-wrap:wrap}
+.step:not([hidden]){animation:fi .25s ease both}
 .box>*,.row>*{min-width:0}
 aside{overflow-x:hidden!important}
 @keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -118,29 +133,66 @@ mark{background:var(--hl);color:inherit;border-radius:3px}
 <body>
 <div class="top">
   <div class="logo">D</div><h1>Exportar Chat de Discord</h1><div class="sp"></div>
+  <button class="sec" id="back" hidden>← Configuración</button>
   <button class="sec" id="theme" title="Cambiar tema">🌙 / ☀️</button>
 </div>
-<div class="app">
-<aside>
-  <details open><summary>1 · Conexión y descarga</summary><div class="box">
-    <div><label class="l">Token</label><input id="token" type="password" autocomplete="off"></div>
-    <div class="row">
-      <div><label class="l">Tipo de token</label><select id="ttype"><option value="Bot">Bot (recomendado)</option><option value="User">Usuario</option></select></div>
-      <div><label class="l">ID del servidor</label><input id="guild" type="text" inputmode="numeric" autocomplete="off"></div>
-    </div>
-    <div class="btns"><button class="sec" id="loadCh">Cargar canales del servidor</button></div>
-    <div id="chList" class="list" hidden></div>
-    <div><label class="l">ID(s) de canal (separados por coma)</label><input id="chIds" type="text" autocomplete="off" placeholder="123456789, 987654321"></div>
-    <div class="row">
-      <div><label class="l">Descargar desde</label><input id="dlFrom" type="date"></div>
-      <div><label class="l">Descargar hasta</label><input id="dlTo" type="date"></div>
-    </div>
-    <div><label class="l">Máx. mensajes por canal (vacío = todos)</label><input id="maxMsgs" type="number" min="1"></div>
-    <div class="btns"><button id="go">Extraer mensajes</button><button class="dng" id="cancel" hidden>Cancelar</button></div>
-    <div class="btns"><button class="sec" id="impBtn">Abrir JSON exportado</button><input id="imp" type="file" accept=".json,application/json" hidden></div>
-    <div class="warn">El token se usa solo en tu navegador y se envía únicamente a discord.com; no se guarda. Un token de usuario infringe los Términos de Servicio de Discord y puede suspender tu cuenta.</div>
-  </div></details>
+<div id="statusWrap"><div id="status"><div style="display:flex;align-items:center;gap:12px"><span id="stTxt" style="flex:1"></span><button class="dng" id="cancel" hidden>Cancelar</button></div><div class="prog"><i></i></div></div></div>
 
+<section id="wiz">
+  <div class="steps">
+    <div class="st on" data-s="1"><b>1</b><span>Conexión<small>Obligatorio</small></span></div><i></i>
+    <div class="st" data-s="2"><b>2</b><span>Descarga<small>Opcional</small></span></div><i></i>
+    <div class="st" data-s="3"><b>3</b><span>Filtros<small>Opcional</small></span></div><i></i>
+    <div class="st" data-s="4"><b>4</b><span>Resultado<small>Vista previa</small></span></div>
+  </div>
+  <div class="wcard">
+    <div class="step" data-s="1">
+      <h2>Conexión</h2><p class="hint">Obligatorio: token y al menos un canal.</p>
+      <div class="fields">
+        <div><label class="l">Token</label><input id="token" type="password" autocomplete="off"></div>
+        <div class="row">
+          <div><label class="l">Tipo de token</label><select id="ttype"><option value="Bot">Bot (recomendado)</option><option value="User">Usuario</option></select></div>
+          <div><label class="l">ID del servidor</label><input id="guild" type="text" inputmode="numeric" autocomplete="off"></div>
+        </div>
+        <div class="btns"><button class="sec" id="loadCh">Cargar canales del servidor</button></div>
+        <div id="chList" class="list" hidden></div>
+        <div><label class="l">O escribe ID(s) de canal (separados por coma)</label><input id="chIds" type="text" autocomplete="off" placeholder="123456789, 987654321"></div>
+        <div class="warn">El token se usa solo en tu navegador y se envía únicamente a discord.com; no se guarda. Un token de usuario infringe los Términos de Servicio de Discord y puede suspender tu cuenta.</div>
+      </div>
+      <div class="nav"><button id="impBtn" class="sec">Abrir un JSON exportado</button><input id="imp" type="file" accept=".json,application/json" hidden><span style="flex:1"></span><button class="sec goBtn">Extraer ahora</button><button id="n1">Siguiente →</button></div>
+    </div>
+    <div class="step" data-s="2" hidden>
+      <h2>Descarga</h2><p class="hint">Opcional: limita lo que se descarga. Vacío = todo el historial.</p>
+      <div class="fields">
+        <div class="row"><div><label class="l">Desde</label><input id="dlFrom" type="date"></div><div><label class="l">Hasta</label><input id="dlTo" type="date"></div></div>
+        <div><label class="l">Máx. mensajes por canal</label><input id="maxMsgs" type="number" min="1" placeholder="todos"></div>
+      </div>
+      <div class="nav"><button class="sec bk" data-to="1">← Atrás</button><span style="flex:1"></span><button class="sec goBtn">Extraer ahora</button><button id="n2">Siguiente →</button></div>
+    </div>
+    <div class="step" data-s="3" hidden>
+      <h2>Filtros</h2><p class="hint">Opcional: se aplican al terminar la descarga y podrás cambiarlos en el resultado.</p>
+      <div class="fields">
+        <div><label class="l">Buscar texto</label><input id="pfQ" type="text" placeholder="palabras (todas deben aparecer)"></div>
+        <div><label class="l">Solo estos usuarios (nombre o ID, separados por coma)</label><input id="pfUsers" type="text" placeholder="Ana, Beto"></div>
+        <div class="checks">
+          <label class="chk"><input type="checkbox" id="pfAtt"> Con adjuntos</label>
+          <label class="chk"><input type="checkbox" id="pfLink"> Con enlaces</label>
+          <label class="chk"><input type="checkbox" id="pfEmb"> Con embeds</label>
+          <label class="chk"><input type="checkbox" id="pfRep"> Solo respuestas</label>
+          <label class="chk"><input type="checkbox" id="pfRea"> Con reacciones</label>
+          <label class="chk"><input type="checkbox" id="pfPin"> Solo fijados</label>
+          <label class="chk"><input type="checkbox" id="pfBot"> Ocultar bots</label>
+        </div>
+        <div style="max-width:200px"><label class="l">Mín. caracteres</label><input id="pfMin" type="number" min="0"></div>
+      </div>
+      <div class="nav"><button class="sec bk" data-to="2">← Atrás</button><span style="flex:1"></span><button class="goBtn">Extraer mensajes</button></div>
+    </div>
+  </div>
+  <p class="hint" style="text-align:center"><a href="#" id="toRes" hidden>Ver el resultado anterior →</a></p>
+</section>
+
+<div class="app" hidden>
+<aside>
   <details open id="fBox" hidden><summary>2 · Filtros</summary><div class="box">
     <div><label class="l">Buscar texto</label><input id="q" type="text" placeholder="palabras (todas deben aparecer)"></div>
     <div><label class="l">Usuarios <span class="hint" id="auCnt"></span></label>
@@ -171,10 +223,6 @@ mark{background:var(--hl);color:inherit;border-radius:3px}
 </aside>
 
 <main>
-  <div id="status"><span id="stTxt"></span><div class="prog"><i></i></div></div>
-  <div id="empty"><h2>Extrae, filtra y previsualiza chats de Discord</h2>
-    <p>Pega tu token, el ID del servidor y elige uno o varios canales.<br>Después filtra por usuario, texto, fechas y más, mira estadísticas y exporta.</p>
-    <p class="hint">También puedes abrir un JSON exportado antes, sin necesidad de token.</p></div>
   <div id="work" hidden>
     <div class="cards" id="cards"></div>
     <details id="stBox"><summary>📊 Estadísticas detalladas</summary><div class="panels" id="panels"></div></details>
@@ -264,18 +312,19 @@ $("#loadCh").onclick = async () => {
 };
 
 /* ---------- Extracción ---------- */
-$("#go").onclick = async () => {
+async function startExtract() {
   const guild = $("#guild").value.trim();
   const ids = [...new Set([...document.querySelectorAll("#chList input:checked")].map(i => i.value)
     .concat($("#chIds").value.split(/[\s,;]+/).filter(x => /^\d+$/.test(x))))];
-  if (!getToken()) return status("Falta el token.", "err");
-  if (!ids.length) return status("Elige o escribe al menos un canal.", "err");
+  if (!getToken()) { gotoStep(1); return status("Falta el token.", "err"); }
+  if (!ids.length) { gotoStep(1); return status("Elige o escribe al menos un canal.", "err"); }
   const from = $("#dlFrom").value, to = $("#dlTo").value;
   const after0 = from ? snow(new Date(from + "T00:00:00").getTime()) : "0";
   const toMs = to ? new Date(to + "T23:59:59.999").getTime() : Infinity;
   const max = +$("#maxMsgs").value || Infinity;
   S.cancel = false; S.chan = S.chan || {};
-  $("#go").disabled = true; $("#cancel").hidden = false;
+  document.querySelectorAll(".goBtn").forEach(b => b.disabled = true); $("#cancel").hidden = false;
+  showView("result"); $("#work").hidden = true;
   const out = [], warns = [];
   try {
     for (let i = 0; i < ids.length && !S.cancel; i++) {
@@ -300,12 +349,13 @@ $("#go").onclick = async () => {
         if (b.length < 100) break;
       }
     }
-    if (!out.length) return status("No se obtuvieron mensajes." + (warns.length ? " " + warns.join(" | ") : ""), "err");
-    setData(out);
-    status(`${num(out.length)} mensajes cargados.` + (S.cancel ? " (descarga cancelada, resultado parcial)" : "") + (warns.length ? " Avisos: " + warns.join(" | ") : ""), warns.length ? "" : "ok");
-  } catch (e) { status(e.message, "err"); }
-  finally { $("#go").disabled = false; $("#cancel").hidden = true; }
-};
+    if (!out.length) { showView("wizard"); return status("No se obtuvieron mensajes." + (warns.length ? " " + warns.join(" | ") : ""), "err"); }
+    const note = setData(out, true);
+    status(`${num(out.length)} mensajes cargados.` + (S.cancel ? " (descarga cancelada, resultado parcial)" : "") + note + (warns.length ? " Avisos: " + warns.join(" | ") : ""), warns.length ? "" : "ok");
+  } catch (e) { showView("wizard"); status(e.message, "err"); }
+  finally { document.querySelectorAll(".goBtn").forEach(b => b.disabled = false); $("#cancel").hidden = true; }
+}
+document.querySelectorAll(".goBtn").forEach(b => b.onclick = startExtract);
 $("#cancel").onclick = () => { S.cancel = true; };
 
 $("#impBtn").onclick = () => $("#imp").click();
@@ -321,7 +371,7 @@ $("#imp").onchange = async e => {
 };
 
 /* ---------- Datos y filtros ---------- */
-function setData(msgs) {
+function setData(msgs, pre) {
   msgs.sort(idCmp);
   S.all = msgs; S.users = {};
   const chans = {};
@@ -333,9 +383,11 @@ function setData(msgs) {
   }
   S.authors = new Set(msgs.map(m => m.author.id));
   S.chans = new Set(Object.keys(chans));
+  const note = pre ? applyPre() : "";
   buildAuthors(); buildChanFilter(chans);
-  $("#empty").hidden = true; $("#work").hidden = false; $("#fBox").hidden = false; $("#xBox").hidden = false;
+  $("#work").hidden = false; showView("result");
   applyFilters();
+  return note;
 }
 
 function buildAuthors() {
@@ -415,8 +467,8 @@ function applyFilters() {
 /* ---------- Markdown ---------- */
 function md(t) {
   if (!t) return "";
-  const hold = [], H = h => { hold.push(h); return ` ${hold.length - 1} `; };
-  t = String(t).replace(/ /g, "");
+  const hold = [], H = h => { hold.push(h); return `\u0000${hold.length - 1}\u0000`; };
+  t = String(t).replace(/\u0000/g, "");
   t = t.replace(/```(?:[\w+-]*\n)?([\s\S]*?)```/g, (_, c) => H(`<pre>${esc(c.replace(/\n$/, ""))}</pre>`));
   t = t.replace(/`([^`\n]+)`/g, (_, c) => H(`<code>${esc(c)}</code>`));
   t = esc(t);
@@ -445,7 +497,7 @@ function md(t) {
     .replace(/(^|\W)_([^_\n]+?)_(?=\W|$)/g, "$1<i>$2</i>")
     .replace(/~~([\s\S]+?)~~/g, "<s>$1</s>")
     .replace(/\n/g, "<br>");
-  return t.replace(/ (\d+) /g, (_, i) => hold[i]);
+  return t.replace(/\u0000(\d+)\u0000/g, (_, i) => hold[i]);
 }
 
 function avatarUrl(a) {
@@ -628,6 +680,43 @@ function exportView(kind) {
   }
 }
 document.querySelectorAll("[data-x]").forEach(b => b.onclick = () => exportView(b.dataset.x));
+
+/* ---------- Asistente por pasos ---------- */
+function channelIds() {
+  return [...new Set([...document.querySelectorAll("#chList input:checked")].map(i => i.value)
+    .concat($("#chIds").value.split(/[\s,;]+/).filter(x => /^\d+$/.test(x))))];
+}
+function gotoStep(n) {
+  document.querySelectorAll(".step").forEach(x => x.hidden = +x.dataset.s !== n);
+  document.querySelectorAll(".st").forEach(x => { const k = +x.dataset.s; x.classList.toggle("on", k === n); x.classList.toggle("done", k < n); });
+  scrollTo({ top: 0 });
+}
+function showView(v) {
+  $("#wiz").hidden = v !== "wizard";
+  document.querySelector(".app").hidden = v !== "result";
+  $("#back").hidden = v !== "result";
+  $("#toRes").hidden = !S.all.length;
+}
+function applyPre() {
+  $("#q").value = $("#pfQ").value;
+  [["cAtt", "pfAtt"], ["cLink", "pfLink"], ["cEmb", "pfEmb"], ["cRep", "pfRep"], ["cRea", "pfRea"], ["cPin", "pfPin"], ["cBot", "pfBot"]].forEach(([a, b]) => $("#" + a).checked = $("#" + b).checked);
+  $("#minLen").value = $("#pfMin").value;
+  const t = $("#pfUsers").value.toLowerCase().split(/[,;\n]+/).map(x => x.trim()).filter(Boolean);
+  if (!t.length) return "";
+  const ids = Object.values(S.users).filter(u => u.n > 0 && t.some(x => x === u.id || u.name.toLowerCase().includes(x))).map(u => u.id);
+  if (!ids.length) return " Ningún usuario coincidió con el filtro, se muestran todos.";
+  S.authors = new Set(ids); return "";
+}
+$("#n1").onclick = () => {
+  if (!getToken()) return status("Falta el token.", "err");
+  if (!channelIds().length) return status("Elige o escribe al menos un canal.", "err");
+  $("#status").className = ""; gotoStep(2);
+};
+$("#n2").onclick = () => gotoStep(3);
+document.querySelectorAll(".bk").forEach(b => b.onclick = () => gotoStep(+b.dataset.to));
+$("#back").onclick = () => { $("#status").className = ""; showView("wizard"); gotoStep(1); };
+$("#toRes").onclick = e => { e.preventDefault(); showView("result"); };
+showView("wizard"); gotoStep(1);
 
 /* ---------- Interacción general ---------- */
 document.addEventListener("click", e => {
