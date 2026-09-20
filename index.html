@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Exportar Chat de Discord</title>
+<style>
+:root{--bg:#313338;--bg2:#2b2d31;--bg3:#1e1f22;--tx:#dbdee1;--mu:#949ba4;--ac:#5865f2}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',Arial,sans-serif;margin:0}
+header{background:var(--bg2);padding:16px 24px;border-bottom:1px solid var(--bg3)}
+header h1{margin:0;font-size:20px;color:#fff}
+.wrap{max-width:900px;margin:0 auto;padding:16px}
+form{background:var(--bg2);padding:16px;border-radius:8px;display:grid;gap:12px;grid-template-columns:1fr 1fr}
+form .full{grid-column:1/-1}
+label{font-size:12px;color:var(--mu);text-transform:uppercase;font-weight:700;display:block;margin-bottom:4px}
+input,select{width:100%;background:var(--bg3);border:0;color:var(--tx);padding:10px;border-radius:4px;font-size:14px}
+button{background:var(--ac);color:#fff;border:0;padding:10px 16px;border-radius:4px;font-size:14px;cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+button.sec{background:#4e5058}
+.warn{font-size:12px;color:#f0b232;grid-column:1/-1}
+#status{margin:12px 0;color:var(--mu);font-size:14px}
+#status.err{color:#f23f42}
+#actions{display:none;gap:8px;margin-bottom:12px}
+.day{text-align:center;color:var(--mu);font-size:12px;margin:18px 0;border-top:1px solid #3f4147;line-height:0}
+.day span{background:var(--bg);padding:0 10px}
+.msg{display:flex;gap:14px;padding:6px 8px;border-radius:4px}.msg:hover{background:#2e3035}
+.av{width:40px;height:40px;border-radius:50%;flex:none;background:var(--ac)}
+.name{color:#fff;font-weight:600}.ts{color:var(--mu);font-size:12px;margin-left:8px}
+.reply{color:var(--mu);font-size:12px;margin-bottom:2px}
+.cnt{white-space:pre-wrap;word-break:break-word}
+.att img{max-width:400px;max-height:300px;border-radius:6px;margin-top:4px;display:block}
+a{color:#00a8fc}
+.embed{border-left:4px solid var(--ac);background:var(--bg2);padding:8px 12px;margin-top:4px;border-radius:4px;max-width:500px}
+.embed b{display:block}.embed p{margin:4px 0 0;font-size:14px}
+.react{display:inline-block;background:var(--bg2);border:1px solid #3f4147;border-radius:6px;padding:1px 6px;margin:4px 4px 0 0;font-size:13px}
+@media(max-width:600px){form{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><h1>Exportar Chat de Servidor de Discord</h1></header>
+<div class="wrap">
+  <form id="f" autocomplete="off">
+    <div class="full"><label>Token</label><input id="token" type="password" required></div>
+    <div><label>Tipo de token</label>
+      <select id="ttype"><option value="Bot">Bot (recomendado)</option><option value="User">Usuario</option></select></div>
+    <div><label>ID del servidor</label><input id="guild" required inputmode="numeric"></div>
+    <div><label>ID del canal</label><input id="channel" required inputmode="numeric"></div>
+    <div style="align-self:end"><button id="go" class="full" style="width:100%">Extraer mensajes</button></div>
+    <div class="warn">El token se usa solo en tu navegador y se envía únicamente a discord.com. No se guarda en ningún lado. Usar un token de usuario infringe los Términos de Servicio de Discord y puede suspender tu cuenta.</div>
+  </form>
+  <div id="status"></div>
+  <div id="actions">
+    <button class="sec" id="dlJson">Descargar JSON</button>
+    <button class="sec" id="dlHtml">Descargar HTML</button>
+  </div>
+  <div id="preview"></div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const API = "https://discord.com/api/v10";
+let messages = [], chanName = "canal";
+
+async function api(path, token, params) {
+  const url = API + path + (params ? "?" + new URLSearchParams(params) : "");
+  for (;;) {
+    const r = await fetch(url, { headers: { Authorization: token } });
+    if (r.status === 429) {
+      const d = await r.json();
+      await new Promise(s => setTimeout(s, (d.retry_after + 0.5) * 1000));
+      continue;
+    }
+    if (r.status === 401) throw new Error("401: token inválido.");
+    if (r.status === 403) throw new Error("403: sin permisos para ver este canal / leer el historial.");
+    if (r.status === 404) throw new Error("404: canal no encontrado o sin acceso.");
+    if (!r.ok) throw new Error("Error HTTP " + r.status);
+    return r.json();
+  }
+}
+
+const fmt = iso => new Date(iso).toLocaleString("es");
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const safeUrl = u => /^https?:\/\//i.test(u) ? u : "#";
+
+function render(list) {
+  const box = $("preview"); box.replaceChildren();
+  let lastDay = "";
+  for (const m of list) {
+    const day = fmt(m.timestamp).split(",")[0];
+    if (day !== lastDay) { const d = el("div", "day"); d.append(el("span", null, day)); box.append(d); lastDay = day; }
+    const a = m.author, row = el("div", "msg");
+    let av;
+    if (a.avatar) { av = el("img", "av"); av.src = `https://cdn.discordapp.com/avatars/${a.id}/${a.avatar}.png?size=64`; }
+    else av = el("div", "av");
+    const body = el("div");
+    const head = el("div");
+    head.append(el("span", "name", (m.member && m.member.nick) || a.global_name || a.username),
+                el("span", "ts", fmt(m.timestamp) + (m.edited_timestamp ? " (editado)" : "")));
+    body.append(head);
+    if (m.referenced_message) {
+      const r = m.referenced_message;
+      body.append(el("div", "reply", "↩ " + (r.author.global_name || r.author.username) + ": " + (r.content || "").slice(0, 80)));
+    }
+    let content = m.content || "";
+    for (const u of m.mentions || []) content = content.split(`<@${u.id}>`).join("@" + (u.global_name || u.username)).split(`<@!${u.id}>`).join("@" + (u.global_name || u.username));
+    if (content) body.append(el("div", "cnt", content));
+    for (const at of m.attachments || []) {
+      const w = el("div", "att");
+      if ((at.content_type || "").startsWith("image/")) { const i = el("img"); i.src = at.url; i.loading = "lazy"; w.append(i); }
+      else { const l = el("a", null, at.filename); l.href = safeUrl(at.url); l.target = "_blank"; l.rel = "noopener"; w.append(l); }
+      body.append(w);
+    }
+    for (const e of m.embeds || []) {
+      const w = el("div", "embed"), t = el("b");
+      if (e.title) { if (e.url) { const l = el("a", null, e.title); l.href = safeUrl(e.url); l.target = "_blank"; l.rel = "noopener"; t.append(l); } else t.textContent = e.title; }
+      w.append(t); if (e.description) w.append(el("p", null, e.description));
+      body.append(w);
+    }
+    for (const r of m.reactions || []) body.append(el("span", "react", (r.emoji.name || "?") + " " + r.count));
+    row.append(av, body); box.append(row);
+  }
+}
+
+function download(name, text, type) {
+  const a = el("a"); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+$("f").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const st = $("status"), btn = $("go");
+  st.className = ""; $("actions").style.display = "none"; $("preview").replaceChildren();
+  btn.disabled = true;
+  let token = $("token").value.trim();
+  if ($("ttype").value === "Bot" && !token.startsWith("Bot ")) token = "Bot " + token;
+  const guild = $("guild").value.trim(), channel = $("channel").value.trim();
+  try {
+    const ch = await api(`/channels/${channel}`, token);
+    if (String(ch.guild_id) !== guild) throw new Error("El canal no pertenece a ese servidor.");
+    chanName = ch.name || channel;
+    messages = [];
+    let after = "0";
+    for (;;) {
+      st.textContent = `Descargando... ${messages.length} mensajes`;
+      const batch = await api(`/channels/${channel}/messages`, token, { limit: 100, after });
+      if (!batch.length) break;
+      batch.sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
+      messages.push(...batch);
+      after = batch[batch.length - 1].id;
+      if (batch.length < 100) break;
+    }
+    messages.sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
+    st.textContent = `#${chanName}: ${messages.length} mensajes en orden cronológico.`;
+    render(messages);
+    $("actions").style.display = "flex";
+  } catch (e) {
+    st.className = "err"; st.textContent = e.message;
+  } finally { btn.disabled = false; }
+});
+
+$("dlJson").onclick = () => download(chanName + ".json", JSON.stringify(messages, null, 2), "application/json");
+$("dlHtml").onclick = () => {
+  const css = document.querySelector("style").textContent;
+  const doc = `<!doctype html><html><head><meta charset="utf-8"><title>#${chanName}</title><style>${css}</style></head><body><header><h1>#${chanName}</h1></header><div class="wrap">${$("preview").innerHTML}</div></body></html>`;
+  download(chanName + ".html", doc, "text/html");
+};
+</script>
+</body>
+</html>
