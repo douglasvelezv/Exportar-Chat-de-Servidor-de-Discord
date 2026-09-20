@@ -1,169 +1,631 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Exportar Chat de Discord</title>
 <style>
-:root{--bg:#313338;--bg2:#2b2d31;--bg3:#1e1f22;--tx:#dbdee1;--mu:#949ba4;--ac:#5865f2}
+:root{--bg:#313338;--bg2:#2b2d31;--bg3:#1e1f22;--bg4:#383a40;--tx:#dbdee1;--mu:#949ba4;--ac:#5865f2;--ac2:#4752c4;--ln:#3f4147;--ok:#23a55a;--err:#f23f42;--warn:#f0b232;--lk:#00a8fc;--mn-bg:#3c4270;--mn-tx:#c9cdfb;--hl:#f0b23266}
+[data-theme=light]{--bg:#ffffff;--bg2:#f2f3f5;--bg3:#e3e5e8;--bg4:#ebedef;--tx:#313338;--mu:#5c5e66;--ln:#d7d9dc;--lk:#0068e0;--mn-bg:#e6e8fd;--mn-tx:#4752c4;--hl:#ffd54f88}
 *{box-sizing:border-box}
-body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',Arial,sans-serif;margin:0}
-header{background:var(--bg2);padding:16px 24px;border-bottom:1px solid var(--bg3)}
-header h1{margin:0;font-size:20px;color:#fff}
-.wrap{max-width:900px;margin:0 auto;padding:16px}
-form{background:var(--bg2);padding:16px;border-radius:8px;display:grid;gap:12px;grid-template-columns:1fr 1fr}
-form .full{grid-column:1/-1}
-label{font-size:12px;color:var(--mu);text-transform:uppercase;font-weight:700;display:block;margin-bottom:4px}
-input,select{width:100%;background:var(--bg3);border:0;color:var(--tx);padding:10px;border-radius:4px;font-size:14px}
-button{background:var(--ac);color:#fff;border:0;padding:10px 16px;border-radius:4px;font-size:14px;cursor:pointer}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,Arial,sans-serif;margin:0;font-size:15px}
+button,input,select{font:inherit}
+.top{display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--bg2);border-bottom:1px solid var(--ln);position:sticky;top:0;z-index:20}
+.top h1{margin:0;font-size:18px}.top .sp{flex:1}
+.logo{width:30px;height:30px;border-radius:8px;background:var(--ac);display:grid;place-items:center;color:#fff;font-weight:700}
+.app{display:grid;grid-template-columns:350px minmax(0,1fr);gap:0;min-height:calc(100vh - 55px)}
+aside{background:var(--bg2);border-right:1px solid var(--ln);padding:12px;overflow:auto;max-height:calc(100vh - 55px);position:sticky;top:55px}
+main{padding:16px 24px;min-width:0}
+details{background:var(--bg);border:1px solid var(--ln);border-radius:8px;margin-bottom:10px}
+summary{cursor:pointer;padding:10px 12px;font-weight:700;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:'▸ ';color:var(--mu)}details[open]>summary::before{content:'▾ '}
+.box{padding:4px 12px 12px;display:grid;gap:10px}
+label.l{font-size:11px;color:var(--mu);text-transform:uppercase;font-weight:700;display:block;margin-bottom:3px}
+input[type=text],input[type=password],input[type=date],input[type=number],select{width:100%;background:var(--bg3);border:1px solid transparent;color:var(--tx);padding:8px 10px;border-radius:6px}
+input:focus,select:focus{outline:2px solid var(--ac);outline-offset:0}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button{background:var(--ac);color:#fff;border:0;padding:8px 12px;border-radius:6px;cursor:pointer;transition:.15s}
+button:hover:not(:disabled){background:var(--ac2)}
 button:disabled{opacity:.5;cursor:default}
-button.sec{background:#4e5058}
-.warn{font-size:12px;color:#f0b232;grid-column:1/-1}
-#status{margin:12px 0;color:var(--mu);font-size:14px}
-#status.err{color:#f23f42}
-#actions{display:none;gap:8px;margin-bottom:12px}
-.day{text-align:center;color:var(--mu);font-size:12px;margin:18px 0;border-top:1px solid #3f4147;line-height:0}
-.day span{background:var(--bg);padding:0 10px}
-.msg{display:flex;gap:14px;padding:6px 8px;border-radius:4px}.msg:hover{background:#2e3035}
-.av{width:40px;height:40px;border-radius:50%;flex:none;background:var(--ac)}
-.name{color:#fff;font-weight:600}.ts{color:var(--mu);font-size:12px;margin-left:8px}
-.reply{color:var(--mu);font-size:12px;margin-bottom:2px}
-.cnt{white-space:pre-wrap;word-break:break-word}
-.att img{max-width:400px;max-height:300px;border-radius:6px;margin-top:4px;display:block}
-a{color:#00a8fc}
-.embed{border-left:4px solid var(--ac);background:var(--bg2);padding:8px 12px;margin-top:4px;border-radius:4px;max-width:500px}
-.embed b{display:block}.embed p{margin:4px 0 0;font-size:14px}
-.react{display:inline-block;background:var(--bg2);border:1px solid #3f4147;border-radius:6px;padding:1px 6px;margin:4px 4px 0 0;font-size:13px}
-@media(max-width:600px){form{grid-template-columns:1fr}}
+button.sec{background:var(--bg4);color:var(--tx)}button.sec:hover:not(:disabled){background:var(--ln)}
+button.dng{background:var(--err)}
+.btns{display:flex;flex-wrap:wrap;gap:6px}
+.chk{display:flex;align-items:center;gap:6px;font-size:14px;padding:2px 0;cursor:pointer}
+.list{max-height:190px;overflow:auto;background:var(--bg3);border-radius:6px;padding:6px 8px}
+.list .grp{font-size:11px;color:var(--mu);text-transform:uppercase;font-weight:700;margin:6px 0 2px}
+.list .n{margin-left:auto;color:var(--mu);font-size:12px}
+.warn{font-size:12px;color:var(--warn)}
+.hint{font-size:12px;color:var(--mu)}
+#status{padding:10px 14px;border-radius:8px;background:var(--bg2);margin-bottom:12px;display:none;font-size:14px}
+#status.on{display:block}#status.err{color:var(--err)}#status.ok{color:var(--ok)}
+.prog{height:4px;background:var(--bg3);border-radius:4px;overflow:hidden;margin-top:8px;display:none}
+.busy .prog{display:block}.prog i{display:block;height:100%;width:30%;background:var(--ac);animation:sl 1.1s infinite ease-in-out}
+@keyframes sl{0%{margin-left:-30%}100%{margin-left:100%}}
+#empty{text-align:center;color:var(--mu);padding:60px 20px}
+#empty h2{color:var(--tx)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.card{background:var(--bg2);border-radius:10px;padding:12px 14px}
+.card b{display:block;font-size:22px}.card span{color:var(--mu);font-size:12px}
+.panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:16px}
+.panel{background:var(--bg2);border-radius:10px;padding:12px 14px}
+.panel h3{margin:0 0 10px;font-size:13px;color:var(--mu);text-transform:uppercase}
+.hb{display:flex;align-items:center;gap:8px;font-size:13px;margin:4px 0;cursor:pointer}
+.hb .nm{width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb .bar{flex:1;background:var(--bg3);border-radius:4px;height:14px;overflow:hidden}
+.hb .bar i{display:block;height:100%;background:var(--ac)}
+.hb .v{width:46px;text-align:right;color:var(--mu)}
+.cols{display:flex;align-items:flex-end;gap:2px;height:90px}
+.cols i{flex:1;background:var(--ac);border-radius:2px 2px 0 0;min-width:1px;opacity:.85}
+.cols i:hover{opacity:1;background:var(--ok)}
+.lbls{display:flex;justify-content:space-between;color:var(--mu);font-size:11px;margin-top:4px}
+.tb{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:8px;position:sticky;top:55px;background:var(--bg);padding:8px 0;z-index:10;border-bottom:1px solid var(--ln)}
+.tb .cnt2{color:var(--mu);font-size:14px}.tb select,.tb input{width:auto}
+.day{text-align:center;color:var(--mu);font-size:12px;margin:18px 0 8px;border-top:1px solid var(--ln);line-height:0}
+.day span{background:var(--bg);padding:0 12px}
+.msg{display:flex;gap:14px;padding:4px 10px;border-radius:6px;position:relative}
+.msg:hover{background:var(--bg2)}
+.msg.first{margin-top:12px}
+.av{width:40px;height:40px;border-radius:50%;flex:none;background:var(--bg4);object-fit:cover}
+.gut{width:40px;flex:none;color:var(--mu);font-size:10px;text-align:right;padding-top:5px;visibility:hidden}
+.msg:hover .gut{visibility:visible}
+.msg .bd{min-width:0;flex:1}
+.name{font-weight:600;cursor:pointer}.name:hover{text-decoration:underline}
+.ts{color:var(--mu);font-size:12px;margin-left:8px}
+.bdg{background:var(--ac);color:#fff;font-size:10px;padding:1px 5px;border-radius:4px;margin-left:6px;vertical-align:1px}
+.ch{background:var(--bg4);color:var(--mu);font-size:11px;padding:1px 6px;border-radius:4px;margin-left:8px}
+.reply{color:var(--mu);font-size:13px;margin-bottom:3px;border-left:2px solid var(--ln);padding-left:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cnt{white-space:normal;word-break:break-word;line-height:1.4}
+.cnt pre{background:var(--bg3);border:1px solid var(--ln);border-radius:6px;padding:8px;overflow:auto;white-space:pre-wrap;margin:4px 0}
+.cnt code{background:var(--bg3);padding:1px 5px;border-radius:4px;font-size:13px}
+.cnt pre code{padding:0}
+.cnt blockquote{margin:2px 0;padding-left:10px;border-left:4px solid var(--ln);color:var(--mu)}
+.mention{background:var(--mn-bg);color:var(--mn-tx);border-radius:4px;padding:0 3px}
+.emoji{width:22px;height:22px;vertical-align:-5px}
+.spoiler{background:var(--bg3);color:transparent;border-radius:4px;cursor:pointer;padding:0 2px}
+.spoiler.on{color:inherit;background:var(--bg4)}
+a{color:var(--lk)}
+mark{background:var(--hl);color:inherit;border-radius:3px}
+.sys{color:var(--mu);font-style:italic}
+.att img,.att video{max-width:min(420px,100%);max-height:320px;border-radius:8px;margin-top:6px;display:block}
+.att audio{margin-top:6px;max-width:100%}
+.file{display:inline-block;background:var(--bg2);border:1px solid var(--ln);border-radius:6px;padding:6px 10px;margin-top:6px;font-size:13px}
+.stk{width:120px;margin-top:4px}
+.embed{border-left:4px solid var(--ac);background:var(--bg2);padding:8px 12px;margin-top:6px;border-radius:4px;max-width:520px;font-size:14px}
+.embed .et{font-weight:700;display:block}.embed .ea,.embed .ef{font-size:12px;color:var(--mu)}
+.embed img{max-width:100%;max-height:260px;border-radius:6px;margin-top:6px;display:block}
+.embed .fl{margin-top:6px}.embed .fl b{display:block;font-size:13px}
+.react{display:inline-flex;align-items:center;gap:4px;background:var(--bg2);border:1px solid var(--ln);border-radius:8px;padding:1px 7px;margin:4px 4px 0 0;font-size:13px}
+.react img{width:16px;height:16px}
+#more{display:block;margin:16px auto}
+#top{position:fixed;right:20px;bottom:20px;border-radius:50%;width:42px;height:42px;padding:0;display:none;z-index:30}
+.single{grid-template-columns:1fr;max-width:920px;margin:0 auto}
+@media(max-width:860px){.app{grid-template-columns:1fr}aside{position:static;max-height:none;border-right:0}.tb{top:55px}}
 </style>
 </head>
 <body>
-<header><h1>Exportar Chat de Servidor de Discord</h1></header>
-<div class="wrap">
-  <form id="f" autocomplete="off">
-    <div class="full"><label>Token</label><input id="token" type="password" required></div>
-    <div><label>Tipo de token</label>
-      <select id="ttype"><option value="Bot">Bot (recomendado)</option><option value="User">Usuario</option></select></div>
-    <div><label>ID del servidor</label><input id="guild" required inputmode="numeric"></div>
-    <div><label>ID del canal</label><input id="channel" required inputmode="numeric"></div>
-    <div style="align-self:end"><button id="go" class="full" style="width:100%">Extraer mensajes</button></div>
-    <div class="warn">El token se usa solo en tu navegador y se envía únicamente a discord.com. No se guarda en ningún lado. Usar un token de usuario infringe los Términos de Servicio de Discord y puede suspender tu cuenta.</div>
-  </form>
-  <div id="status"></div>
-  <div id="actions">
-    <button class="sec" id="dlJson">Descargar JSON</button>
-    <button class="sec" id="dlHtml">Descargar HTML</button>
-  </div>
-  <div id="preview"></div>
+<div class="top">
+  <div class="logo">D</div><h1>Exportar Chat de Discord</h1><div class="sp"></div>
+  <button class="sec" id="theme" title="Cambiar tema">🌙 / ☀️</button>
 </div>
-<script>
-const $ = id => document.getElementById(id);
-const API = "https://discord.com/api/v10";
-let messages = [], chanName = "canal";
+<div class="app">
+<aside>
+  <details open><summary>1 · Conexión y descarga</summary><div class="box">
+    <div><label class="l">Token</label><input id="token" type="password" autocomplete="off"></div>
+    <div class="row">
+      <div><label class="l">Tipo de token</label><select id="ttype"><option value="Bot">Bot (recomendado)</option><option value="User">Usuario</option></select></div>
+      <div><label class="l">ID del servidor</label><input id="guild" type="text" inputmode="numeric" autocomplete="off"></div>
+    </div>
+    <div class="btns"><button class="sec" id="loadCh">Cargar canales del servidor</button></div>
+    <div id="chList" class="list" hidden></div>
+    <div><label class="l">ID(s) de canal (separados por coma)</label><input id="chIds" type="text" autocomplete="off" placeholder="123456789, 987654321"></div>
+    <div class="row">
+      <div><label class="l">Descargar desde</label><input id="dlFrom" type="date"></div>
+      <div><label class="l">Descargar hasta</label><input id="dlTo" type="date"></div>
+    </div>
+    <div><label class="l">Máx. mensajes por canal (vacío = todos)</label><input id="maxMsgs" type="number" min="1"></div>
+    <div class="btns"><button id="go">Extraer mensajes</button><button class="dng" id="cancel" hidden>Cancelar</button></div>
+    <div class="btns"><button class="sec" id="impBtn">Abrir JSON exportado</button><input id="imp" type="file" accept=".json,application/json" hidden></div>
+    <div class="warn">El token se usa solo en tu navegador y se envía únicamente a discord.com; no se guarda. Un token de usuario infringe los Términos de Servicio de Discord y puede suspender tu cuenta.</div>
+  </div></details>
 
-async function api(path, token, params) {
+  <details open id="fBox" hidden><summary>2 · Filtros</summary><div class="box">
+    <div><label class="l">Buscar texto</label><input id="q" type="text" placeholder="palabras (todas deben aparecer)"></div>
+    <div><label class="l">Usuarios <span class="hint" id="auCnt"></span></label>
+      <input id="auQ" type="text" placeholder="buscar usuario...">
+      <div class="btns" style="margin:6px 0"><button class="sec" id="auAll">Todos</button><button class="sec" id="auNone">Ninguno</button></div>
+      <div id="auList" class="list"></div></div>
+    <div id="chFBox"><label class="l">Canales</label><div id="chFList" class="list"></div></div>
+    <div class="row">
+      <div><label class="l">Fecha desde</label><input id="fFrom" type="date"></div>
+      <div><label class="l">Fecha hasta</label><input id="fTo" type="date"></div>
+    </div>
+    <div>
+      <label class="chk"><input type="checkbox" id="cAtt"> Con adjuntos</label>
+      <label class="chk"><input type="checkbox" id="cLink"> Con enlaces</label>
+      <label class="chk"><input type="checkbox" id="cEmb"> Con embeds</label>
+      <label class="chk"><input type="checkbox" id="cRep"> Solo respuestas</label>
+      <label class="chk"><input type="checkbox" id="cRea"> Con reacciones</label>
+      <label class="chk"><input type="checkbox" id="cPin"> Solo fijados</label>
+      <label class="chk"><input type="checkbox" id="cBot"> Ocultar bots</label>
+    </div>
+    <div class="row"><div><label class="l">Mín. caracteres</label><input id="minLen" type="number" min="0"></div><div></div></div>
+    <div class="btns"><button class="sec" id="reset">Restablecer filtros</button></div>
+  </div></details>
+
+  <details open id="xBox" hidden><summary>3 · Exportar (respeta filtros)</summary><div class="box">
+    <div class="btns"><button class="sec" data-x="json">JSON</button><button class="sec" data-x="html">HTML</button><button class="sec" data-x="csv">CSV</button><button class="sec" data-x="txt">TXT</button></div>
+  </div></details>
+</aside>
+
+<main>
+  <div id="status"><span id="stTxt"></span><div class="prog"><i></i></div></div>
+  <div id="empty"><h2>Extrae, filtra y previsualiza chats de Discord</h2>
+    <p>Pega tu token, el ID del servidor y elige uno o varios canales.<br>Después filtra por usuario, texto, fechas y más, mira estadísticas y exporta.</p>
+    <p class="hint">También puedes abrir un JSON exportado antes, sin necesidad de token.</p></div>
+  <div id="work" hidden>
+    <div class="cards" id="cards"></div>
+    <div class="panels" id="panels"></div>
+    <div class="tb">
+      <span class="cnt2" id="showing"></span><span style="flex:1"></span>
+      <select id="order"><option value="asc">Más antiguos primero</option><option value="desc">Más recientes primero</option></select>
+      <label class="hint">Ir a fecha <input id="goDate" type="date"></label>
+    </div>
+    <div id="list"></div>
+    <button class="sec" id="more" hidden>Mostrar más</button>
+    <div id="sentinel" style="height:1px"></div>
+  </div>
+</main>
+</div>
+<button id="top" title="Subir">↑</button>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const API = "https://discord.com/api/v10";
+const EPOCH = 1420070400000n;
+const PAGE = 200;
+const S = { all: [], view: [], chan: {}, roles: {}, users: {}, cancel: false, shown: 0, prev: null, lastDay: "", authors: new Set(), chans: new Set(), terms: [] };
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const snow = ms => ((BigInt(ms) - EPOCH) << 22n).toString();
+const idCmp = (a, b) => { const x = BigInt(a.id), y = BigInt(b.id); return x < y ? -1 : x > y ? 1 : 0; };
+const fmt = d => new Date(d).toLocaleString("es", { dateStyle: "short", timeStyle: "medium" });
+const dayKey = d => new Date(d).toLocaleDateString("sv-SE");
+const dayLbl = d => new Date(d).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const dn = m => (m.member && m.member.nick) || m.author.global_name || m.author.username;
+const num = n => n.toLocaleString("es");
+
+/* ---------- API ---------- */
+function getToken() {
+  let t = $("#token").value.trim();
+  if ($("#ttype").value === "Bot" && t && !/^Bot /i.test(t)) t = "Bot " + t;
+  return t;
+}
+async function api(path, params) {
   const url = API + path + (params ? "?" + new URLSearchParams(params) : "");
   for (;;) {
-    const r = await fetch(url, { headers: { Authorization: token } });
+    if (S.cancel) throw new Error("Cancelado");
+    const r = await fetch(url, { headers: { Authorization: getToken() } });
     if (r.status === 429) {
-      const d = await r.json();
-      await new Promise(s => setTimeout(s, (d.retry_after + 0.5) * 1000));
+      const d = await r.json().catch(() => ({}));
+      await new Promise(s => setTimeout(s, ((d.retry_after || 1) + 0.5) * 1000));
       continue;
     }
     if (r.status === 401) throw new Error("401: token inválido.");
-    if (r.status === 403) throw new Error("403: sin permisos para ver este canal / leer el historial.");
-    if (r.status === 404) throw new Error("404: canal no encontrado o sin acceso.");
+    if (r.status === 403) throw new Error("403: sin permisos (ver canal / leer historial).");
+    if (r.status === 404) throw new Error("404: no encontrado o sin acceso.");
     if (!r.ok) throw new Error("Error HTTP " + r.status);
     return r.json();
   }
 }
 
-const fmt = iso => new Date(iso).toLocaleString("es");
-const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-const safeUrl = u => /^https?:\/\//i.test(u) ? u : "#";
+function status(txt, kind, busy) {
+  const s = $("#status");
+  s.className = "on " + (kind || "") + (busy ? " busy" : "");
+  $("#stTxt").textContent = txt;
+}
 
-function render(list) {
-  const box = $("preview"); box.replaceChildren();
-  let lastDay = "";
-  for (const m of list) {
-    const day = fmt(m.timestamp).split(",")[0];
-    if (day !== lastDay) { const d = el("div", "day"); d.append(el("span", null, day)); box.append(d); lastDay = day; }
-    const a = m.author, row = el("div", "msg");
-    let av;
-    if (a.avatar) { av = el("img", "av"); av.src = `https://cdn.discordapp.com/avatars/${a.id}/${a.avatar}.png?size=64`; }
-    else av = el("div", "av");
-    const body = el("div");
-    const head = el("div");
-    head.append(el("span", "name", (m.member && m.member.nick) || a.global_name || a.username),
-                el("span", "ts", fmt(m.timestamp) + (m.edited_timestamp ? " (editado)" : "")));
-    body.append(head);
-    if (m.referenced_message) {
-      const r = m.referenced_message;
-      body.append(el("div", "reply", "↩ " + (r.author.global_name || r.author.username) + ": " + (r.content || "").slice(0, 80)));
+/* ---------- Canales del servidor ---------- */
+$("#loadCh").onclick = async () => {
+  const g = $("#guild").value.trim();
+  if (!g || !getToken()) return status("Escribe el token y el ID del servidor.", "err");
+  S.cancel = false;
+  try {
+    status("Cargando canales...", "", true);
+    const chs = await api(`/guilds/${g}/channels`);
+    try { for (const r of await api(`/guilds/${g}/roles`)) S.roles[r.id] = r.name; } catch (_) {}
+    const cats = {}; chs.filter(c => c.type === 4).forEach(c => cats[c.id] = c.name);
+    chs.forEach(c => S.chan[c.id] = c.name);
+    const text = chs.filter(c => c.type === 0 || c.type === 5).sort((a, b) => a.position - b.position);
+    const box = $("#chList"); box.replaceChildren(); box.hidden = false;
+    let last = null;
+    for (const c of text) {
+      const cat = cats[c.parent_id] || "Sin categoría";
+      if (cat !== last) { const h = document.createElement("div"); h.className = "grp"; h.textContent = cat; box.append(h); last = cat; }
+      const l = document.createElement("label"); l.className = "chk";
+      l.innerHTML = `<input type="checkbox" value="${esc(c.id)}"> # ${esc(c.name)}`;
+      box.append(l);
     }
-    let content = m.content || "";
-    for (const u of m.mentions || []) content = content.split(`<@${u.id}>`).join("@" + (u.global_name || u.username)).split(`<@!${u.id}>`).join("@" + (u.global_name || u.username));
-    if (content) body.append(el("div", "cnt", content));
-    for (const at of m.attachments || []) {
-      const w = el("div", "att");
-      if ((at.content_type || "").startsWith("image/")) { const i = el("img"); i.src = at.url; i.loading = "lazy"; w.append(i); }
-      else { const l = el("a", null, at.filename); l.href = safeUrl(at.url); l.target = "_blank"; l.rel = "noopener"; w.append(l); }
-      body.append(w);
+    status(`${text.length} canales de texto cargados. Marca los que quieras exportar.`, "ok");
+  } catch (e) { status(e.message, "err"); }
+};
+
+/* ---------- Extracción ---------- */
+$("#go").onclick = async () => {
+  const guild = $("#guild").value.trim();
+  const ids = [...new Set([...document.querySelectorAll("#chList input:checked")].map(i => i.value)
+    .concat($("#chIds").value.split(/[\s,;]+/).filter(x => /^\d+$/.test(x))))];
+  if (!getToken()) return status("Falta el token.", "err");
+  if (!ids.length) return status("Elige o escribe al menos un canal.", "err");
+  const from = $("#dlFrom").value, to = $("#dlTo").value;
+  const after0 = from ? snow(new Date(from + "T00:00:00").getTime()) : "0";
+  const toMs = to ? new Date(to + "T23:59:59.999").getTime() : Infinity;
+  const max = +$("#maxMsgs").value || Infinity;
+  S.cancel = false; S.chan = S.chan || {};
+  $("#go").disabled = true; $("#cancel").hidden = false;
+  const out = [], warns = [];
+  try {
+    for (let i = 0; i < ids.length && !S.cancel; i++) {
+      const id = ids[i];
+      let ch;
+      try { ch = await api(`/channels/${id}`); } catch (e) { if (S.cancel) break; warns.push(`${id}: ${e.message}`); continue; }
+      if (guild && String(ch.guild_id) !== guild) { warns.push(`${id}: no pertenece a ese servidor`); continue; }
+      const name = S.chan[id] = ch.name || id;
+      let after = after0, n = 0, done = false;
+      while (!done && !S.cancel) {
+        status(`Canal ${i + 1}/${ids.length} · #${name} · ${num(n)} mensajes (${num(out.length)} en total)`, "", true);
+        let b;
+        try { b = await api(`/channels/${id}/messages`, { limit: 100, after }); } catch (e) { if (!S.cancel) warns.push(`#${name}: ${e.message}`); break; }
+        if (!b.length) break;
+        b.sort(idCmp);
+        for (const m of b) {
+          if (new Date(m.timestamp).getTime() > toMs) { done = true; break; }
+          m._channel = name; m._cid = id; out.push(m); n++;
+          if (n >= max) { done = true; break; }
+        }
+        after = b[b.length - 1].id;
+        if (b.length < 100) break;
+      }
     }
-    for (const e of m.embeds || []) {
-      const w = el("div", "embed"), t = el("b");
-      if (e.title) { if (e.url) { const l = el("a", null, e.title); l.href = safeUrl(e.url); l.target = "_blank"; l.rel = "noopener"; t.append(l); } else t.textContent = e.title; }
-      w.append(t); if (e.description) w.append(el("p", null, e.description));
-      body.append(w);
+    if (!out.length) return status("No se obtuvieron mensajes." + (warns.length ? " " + warns.join(" | ") : ""), "err");
+    setData(out);
+    status(`${num(out.length)} mensajes cargados.` + (S.cancel ? " (descarga cancelada, resultado parcial)" : "") + (warns.length ? " Avisos: " + warns.join(" | ") : ""), warns.length ? "" : "ok");
+  } catch (e) { status(e.message, "err"); }
+  finally { $("#go").disabled = false; $("#cancel").hidden = true; }
+};
+$("#cancel").onclick = () => { S.cancel = true; };
+
+$("#impBtn").onclick = () => $("#imp").click();
+$("#imp").onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    if (!Array.isArray(data) || !data.length || !data[0].author) throw new Error("El archivo no parece una exportación válida.");
+    data.forEach(m => { m._cid = m._cid || m.channel_id || "0"; m._channel = m._channel || S.chan[m._cid] || "importado"; S.chan[m._cid] = m._channel; });
+    setData(data); status(`${num(data.length)} mensajes importados de ${f.name}.`, "ok");
+  } catch (err) { status(err.message, "err"); }
+  e.target.value = "";
+};
+
+/* ---------- Datos y filtros ---------- */
+function setData(msgs) {
+  msgs.sort(idCmp);
+  S.all = msgs; S.users = {};
+  const chans = {};
+  for (const m of msgs) {
+    const a = m.author;
+    (S.users[a.id] = S.users[a.id] || { id: a.id, name: dn(m), avatar: a.avatar, bot: !!a.bot, n: 0 }).n++;
+    for (const u of m.mentions || []) if (!S.users[u.id]) S.users[u.id] = { id: u.id, name: u.global_name || u.username, avatar: u.avatar, bot: !!u.bot, n: 0 };
+    (chans[m._cid] = chans[m._cid] || { id: m._cid, name: m._channel, n: 0 }).n++;
+  }
+  S.authors = new Set(msgs.map(m => m.author.id));
+  S.chans = new Set(Object.keys(chans));
+  buildAuthors(); buildChanFilter(chans);
+  $("#empty").hidden = true; $("#work").hidden = false; $("#fBox").hidden = false; $("#xBox").hidden = false;
+  applyFilters();
+}
+
+function buildAuthors() {
+  const q = $("#auQ").value.trim().toLowerCase();
+  const list = Object.values(S.users).filter(u => u.n > 0).sort((a, b) => b.n - a.n);
+  const box = $("#auList"); box.replaceChildren();
+  for (const u of list) {
+    if (q && !u.name.toLowerCase().includes(q)) continue;
+    const l = document.createElement("label"); l.className = "chk";
+    l.innerHTML = `<input type="checkbox" value="${esc(u.id)}" ${S.authors.has(u.id) ? "checked" : ""}> ${esc(u.name)}${u.bot ? '<span class="bdg">BOT</span>' : ""}<span class="n">${num(u.n)}</span>`;
+    box.append(l);
+  }
+  $("#auCnt").textContent = `(${S.authors.size}/${list.length})`;
+}
+$("#auList").onchange = e => { const i = e.target; i.checked ? S.authors.add(i.value) : S.authors.delete(i.value); buildAuthorsCount(); applyFilters(); };
+function buildAuthorsCount() { $("#auCnt").textContent = `(${S.authors.size}/${Object.values(S.users).filter(u => u.n > 0).length})`; }
+$("#auQ").oninput = buildAuthors;
+$("#auAll").onclick = () => { Object.values(S.users).filter(u => u.n > 0).forEach(u => S.authors.add(u.id)); buildAuthors(); applyFilters(); };
+$("#auNone").onclick = () => { S.authors.clear(); buildAuthors(); applyFilters(); };
+
+function buildChanFilter(chans) {
+  const list = Object.values(chans);
+  $("#chFBox").hidden = list.length < 2;
+  const box = $("#chFList"); box.replaceChildren();
+  for (const c of list) {
+    const l = document.createElement("label"); l.className = "chk";
+    l.innerHTML = `<input type="checkbox" value="${esc(c.id)}" checked> # ${esc(c.name)}<span class="n">${num(c.n)}</span>`;
+    box.append(l);
+  }
+}
+$("#chFList").onchange = e => { const i = e.target; i.checked ? S.chans.add(i.value) : S.chans.delete(i.value); applyFilters(); };
+
+function isolate(id) { S.authors = new Set([id]); buildAuthors(); applyFilters(); }
+
+["q", "fFrom", "fTo", "cAtt", "cLink", "cEmb", "cRep", "cRea", "cPin", "cBot", "minLen", "order"].forEach(id => {
+  $("#" + id).addEventListener(id === "q" || id === "minLen" ? "input" : "change", applyFilters);
+});
+$("#reset").onclick = () => {
+  ["q", "fFrom", "fTo", "minLen"].forEach(i => $("#" + i).value = "");
+  ["cAtt", "cLink", "cEmb", "cRep", "cRea", "cPin", "cBot"].forEach(i => $("#" + i).checked = false);
+  S.authors = new Set(S.all.map(m => m.author.id));
+  S.chans = new Set(S.all.map(m => m._cid));
+  buildAuthors();
+  document.querySelectorAll("#chFList input").forEach(i => i.checked = true);
+  applyFilters();
+};
+
+const LINK = /https?:\/\//i;
+function applyFilters() {
+  const terms = $("#q").value.toLowerCase().split(/\s+/).filter(Boolean);
+  S.terms = terms;
+  const f = $("#fFrom").value ? new Date($("#fFrom").value + "T00:00:00").getTime() : -Infinity;
+  const t = $("#fTo").value ? new Date($("#fTo").value + "T23:59:59.999").getTime() : Infinity;
+  const c = id => $("#" + id).checked, minLen = +$("#minLen").value || 0;
+  S.view = S.all.filter(m => {
+    if (!S.authors.has(m.author.id) || !S.chans.has(m._cid)) return false;
+    const ts = new Date(m.timestamp).getTime();
+    if (ts < f || ts > t) return false;
+    if (c("cAtt") && !(m.attachments || []).length) return false;
+    if (c("cEmb") && !(m.embeds || []).length) return false;
+    if (c("cRep") && !m.message_reference) return false;
+    if (c("cRea") && !(m.reactions || []).length) return false;
+    if (c("cPin") && !m.pinned) return false;
+    if (c("cBot") && m.author.bot) return false;
+    if (c("cLink") && !(LINK.test(m.content || "") || (m.embeds || []).some(e => e.url))) return false;
+    if ((m.content || "").length < minLen) return false;
+    if (terms.length) {
+      const hay = [m.content, dn(m), ...(m.attachments || []).map(a => a.filename), ...(m.embeds || []).flatMap(e => [e.title, e.description])].join(" ").toLowerCase();
+      if (!terms.every(x => hay.includes(x))) return false;
     }
-    for (const r of m.reactions || []) body.append(el("span", "react", (r.emoji.name || "?") + " " + r.count));
-    row.append(av, body); box.append(row);
+    return true;
+  });
+  if ($("#order").value === "desc") S.view.reverse();
+  renderStats(); resetList();
+}
+
+/* ---------- Markdown ---------- */
+function md(t) {
+  if (!t) return "";
+  const hold = [], H = h => { hold.push(h); return ` ${hold.length - 1} `; };
+  t = String(t).replace(/ /g, "");
+  t = t.replace(/```(?:[\w+-]*\n)?([\s\S]*?)```/g, (_, c) => H(`<pre>${esc(c.replace(/\n$/, ""))}</pre>`));
+  t = t.replace(/`([^`\n]+)`/g, (_, c) => H(`<code>${esc(c)}</code>`));
+  t = esc(t);
+  t = t.replace(/&lt;(a?):(\w+):(\d+)&gt;/g, (_, a, n, id) => H(`<img class="emoji" alt=":${n}:" title=":${n}:" src="https://cdn.discordapp.com/emojis/${id}.${a ? "gif" : "png"}?size=48">`));
+  t = t.replace(/&lt;@!?(\d+)&gt;/g, (_, id) => H(`<span class="mention">@${esc((S.users[id] && S.users[id].name) || id)}</span>`));
+  t = t.replace(/&lt;@&amp;(\d+)&gt;/g, (_, id) => H(`<span class="mention">@${esc(S.roles[id] || "rol")}</span>`));
+  t = t.replace(/&lt;#(\d+)&gt;/g, (_, id) => H(`<span class="mention">#${esc(S.chan[id] || id)}</span>`));
+  t = t.replace(/&lt;t:(\d+)(?::\w)?&gt;/g, (_, s) => H(`<span class="mention">${esc(fmt(s * 1000))}</span>`));
+  t = t.replace(/@(everyone|here)\b/g, m0 => H(`<span class="mention">${m0}</span>`));
+  t = t.replace(/&lt;(https?:\/\/(?:(?!&[lg]t;)\S)+)&gt;/g, "$1");
+  t = t.replace(/https?:\/\/(?:(?!&[lg]t;)\S)+/g, u => {
+    const tail = (u.match(/(?:[.,;:!?)]|&quot;|&#39;)+$/) || [""])[0];
+    const url = u.slice(0, u.length - tail.length);
+    return H(`<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`) + tail;
+  });
+  t = t.replace(/^&gt; (.*)$/gm, "<blockquote>$1</blockquote>").replace(/<\/blockquote>\n/g, "</blockquote>");
+  t = t.replace(/\|\|([\s\S]+?)\|\|/g, '<span class="spoiler">$1</span>')
+    .replace(/\*\*\*([\s\S]+?)\*\*\*/g, "<b><i>$1</i></b>")
+    .replace(/\*\*([\s\S]+?)\*\*/g, "<b>$1</b>")
+    .replace(/__([\s\S]+?)__/g, "<u>$1</u>")
+    .replace(/\*([^\s*][^*]*?)\*/g, "<i>$1</i>")
+    .replace(/(^|\W)_([^_\n]+?)_(?=\W|$)/g, "$1<i>$2</i>")
+    .replace(/~~([\s\S]+?)~~/g, "<s>$1</s>")
+    .replace(/\n/g, "<br>");
+  return t.replace(/ (\d+) /g, (_, i) => hold[i]);
+}
+
+function avatarUrl(a) {
+  if (a.avatar) return `https://cdn.discordapp.com/avatars/${a.id}/${a.avatar}.${String(a.avatar).startsWith("a_") ? "gif" : "png"}?size=64`;
+  let n = 0; try { n = Number((BigInt(a.id) >> 22n) % 6n); } catch (_) {}
+  return `https://cdn.discordapp.com/embed/avatars/${n}.png`;
+}
+const fmtSize = b => b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB";
+const safe = u => /^https?:\/\//i.test(u) ? esc(u) : "#";
+
+function attHtml(at) {
+  const u = safe(at.url), ct = at.content_type || "";
+  if (ct.startsWith("image/")) return `<div class="att"><a href="${u}" target="_blank" rel="noopener"><img src="${u}" loading="lazy" alt="${esc(at.filename)}"></a></div>`;
+  if (ct.startsWith("video/")) return `<div class="att"><video src="${u}" controls preload="none"></video></div>`;
+  if (ct.startsWith("audio/")) return `<div class="att"><audio src="${u}" controls preload="none"></audio></div>`;
+  return `<div class="file">📎 <a href="${u}" target="_blank" rel="noopener">${esc(at.filename)}</a> · ${fmtSize(at.size || 0)}</div>`;
+}
+function embedHtml(e) {
+  const col = e.color != null ? "#" + e.color.toString(16).padStart(6, "0") : "";
+  let h = `<div class="embed"${col ? ` style="border-left-color:${col}"` : ""}>`;
+  if (e.author && e.author.name) h += `<div class="ea">${esc(e.author.name)}</div>`;
+  if (e.title) h += `<span class="et">${e.url ? `<a href="${safe(e.url)}" target="_blank" rel="noopener">${esc(e.title)}</a>` : esc(e.title)}</span>`;
+  if (e.description) h += `<div>${md(e.description)}</div>`;
+  for (const f of e.fields || []) h += `<div class="fl"><b>${esc(f.name)}</b>${md(f.value)}</div>`;
+  const img = (e.image && e.image.url) || (e.type === "gifv" && e.thumbnail && e.thumbnail.url) || (e.thumbnail && e.thumbnail.url);
+  if (img) h += `<img src="${safe(img)}" loading="lazy" alt="">`;
+  if (e.footer && e.footer.text) h += `<div class="ef">${esc(e.footer.text)}</div>`;
+  return h + "</div>";
+}
+const SYS = { 1: "añadió a alguien al grupo", 6: "fijó un mensaje en este canal", 7: "se unió al servidor", 8: "impulsó el servidor", 9: "impulsó el servidor", 10: "impulsó el servidor", 11: "impulsó el servidor" };
+
+function msgHtml(m, compact, showChan) {
+  const a = m.author, sysTxt = (m.type !== 0 && m.type !== 19 && m.type !== 20 && m.type !== 21) ? (SYS[m.type] || "") : "";
+  let body = "";
+  if (sysTxt) body += `<div class="cnt sys">${sysTxt}</div>`;
+  else if (m.type !== 0 && m.type !== 19 && !m.content && !(m.attachments || []).length && !(m.embeds || []).length) body += `<div class="cnt sys">[mensaje del sistema]</div>`;
+  if (m.message_reference && m.type === 19) {
+    const r = m.referenced_message;
+    body += r ? `<div class="reply">↩ <b>${esc(r.author.global_name || r.author.username)}</b> ${esc((r.content || "[adjunto]").slice(0, 100))}</div>` : `<div class="reply">↩ mensaje original no disponible</div>`;
+  }
+  if (m.content && !sysTxt) body += `<div class="cnt">${md(m.content)}</div>`;
+  for (const at of m.attachments || []) body += attHtml(at);
+  for (const st of m.sticker_items || []) body += [1, 2, 4].includes(st.format_type) ? `<img class="stk" src="https://media.discordapp.net/stickers/${esc(st.id)}.png?size=160" alt="${esc(st.name)}" loading="lazy">` : `<div class="file">🏷️ ${esc(st.name)}</div>`;
+  for (const e of m.embeds || []) body += embedHtml(e);
+  for (const r of m.reactions || []) {
+    const em = r.emoji.id ? `<img src="https://cdn.discordapp.com/emojis/${esc(r.emoji.id)}.${r.emoji.animated ? "gif" : "png"}?size=32" alt="">` : esc(r.emoji.name || "?");
+    body += `<span class="react">${em} ${r.count}</span>`;
+  }
+  const tsTxt = fmt(m.timestamp) + (m.edited_timestamp ? " (editado)" : "") + (m.pinned ? " 📌" : "");
+  const chTag = showChan ? `<span class="ch"># ${esc(m._channel)}</span>` : "";
+  if (compact) return `<div class="msg" data-id="${esc(m.id)}"><div class="gut">${new Date(m.timestamp).toLocaleTimeString("es", { timeStyle: "short" })}</div><div class="bd">${body}</div></div>`;
+  return `<div class="msg first" data-id="${esc(m.id)}"><img class="av" loading="lazy" src="${avatarUrl(a)}" alt=""><div class="bd"><div><span class="name" data-a="${esc(a.id)}" title="Clic: ver solo a este usuario">${esc(dn(m))}</span>${a.bot ? '<span class="bdg">BOT</span>' : ""}<span class="ts">${tsTxt}</span>${chTag}</div>${body}</div></div>`;
+}
+
+function highlight(root, terms) {
+  if (!terms.length) return;
+  const re = new RegExp("(" + terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "gi");
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), nodes = [];
+  while (w.nextNode()) nodes.push(w.currentNode);
+  for (const n of nodes) {
+    const parts = n.nodeValue.split(re);
+    if (parts.length < 2) continue;
+    const frag = document.createDocumentFragment();
+    parts.forEach((p, i) => { if (i % 2) { const k = document.createElement("mark"); k.textContent = p; frag.append(k); } else if (p) frag.append(p); });
+    n.replaceWith(frag);
   }
 }
 
-function download(name, text, type) {
-  const a = el("a"); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+/* ---------- Lista paginada ---------- */
+const multiChan = () => Object.keys(S.chan).length > 1 && new Set(S.all.map(m => m._cid)).size > 1;
+function resetList() { $("#list").replaceChildren(); S.shown = 0; S.prev = null; S.lastDay = ""; moreMsgs(); }
+function moreMsgs(upTo) {
+  const end = Math.min(S.view.length, upTo != null ? upTo : S.shown + PAGE), mc = multiChan();
+  let html = "";
+  for (let i = S.shown; i < end; i++) {
+    const m = S.view[i], dk = dayKey(m.timestamp);
+    if (dk !== S.lastDay) { html += `<div class="day" data-d="${dk}"><span>${dayLbl(m.timestamp)}</span></div>`; S.lastDay = dk; S.prev = null; }
+    const p = S.prev;
+    const compact = p && p.author.id === m.author.id && p._cid === m._cid && Math.abs(new Date(m.timestamp) - new Date(p.timestamp)) < 420000 && m.type !== 19 && !m.type;
+    html += msgHtml(m, compact, mc);
+    S.prev = m;
+  }
+  const holder = document.createElement("div"); holder.innerHTML = html;
+  const list = $("#list");
+  const kids = [...holder.childNodes];
+  if (S.terms.length) kids.forEach(k => k.querySelectorAll && k.querySelectorAll(".cnt,.embed,.file").forEach(x => highlight(x, S.terms)));
+  list.append(...kids);
+  S.shown = end;
+  $("#showing").textContent = `Mostrando ${num(S.shown)} de ${num(S.view.length)} mensajes (de ${num(S.all.length)})`;
+  $("#more").hidden = S.shown >= S.view.length;
+}
+$("#more").onclick = () => moreMsgs();
+new IntersectionObserver(es => { if (es[0].isIntersecting && S.shown < S.view.length) moreMsgs(); }, { rootMargin: "600px" }).observe($("#sentinel"));
+
+$("#goDate").onchange = e => {
+  const v = e.target.value; if (!v) return;
+  const target = new Date(v + "T00:00:00").getTime(), asc = $("#order").value === "asc";
+  let idx = S.view.findIndex(m => { const t = new Date(m.timestamp).getTime(); return asc ? t >= target : t <= target + 86399999; });
+  if (idx < 0) return status("No hay mensajes en o después de esa fecha con los filtros actuales.", "err");
+  while (S.shown <= idx) moreMsgs(Math.min(S.view.length, idx + PAGE));
+  const el = $("#list").querySelector(`[data-id="${S.view[idx].id}"]`);
+  if (el) el.scrollIntoView({ block: "center" });
+};
+
+/* ---------- Estadísticas ---------- */
+function bars(items, onClick) {
+  const max = Math.max(1, ...items.map(i => i.v));
+  return items.map(i => `<div class="hb" ${onClick ? `data-u="${esc(i.id)}"` : ""} title="${esc(i.n)}: ${num(i.v)}"><span class="nm">${esc(i.n)}</span><span class="bar"><i style="width:${(i.v / max * 100).toFixed(1)}%"></i></span><span class="v">${num(i.v)}</span></div>`).join("");
+}
+function cols(items) {
+  const max = Math.max(1, ...items.map(i => i.v));
+  return `<div class="cols">${items.map(i => `<i style="height:${Math.max(2, i.v / max * 100)}%" title="${esc(i.n)}: ${num(i.v)}"></i>`).join("")}</div>`;
+}
+function renderStats() {
+  const v = S.view;
+  const users = {}, byDay = {}, byHour = Array(24).fill(0), byWd = Array(7).fill(0);
+  let att = 0, words = 0;
+  for (const m of v) {
+    users[m.author.id] = (users[m.author.id] || 0) + 1;
+    const d = new Date(m.timestamp);
+    byDay[dayKey(d)] = (byDay[dayKey(d)] || 0) + 1;
+    byHour[d.getHours()]++; byWd[(d.getDay() + 6) % 7]++;
+    att += (m.attachments || []).length;
+    words += (m.content || "").split(/\s+/).filter(Boolean).length;
+  }
+  const keys = Object.keys(byDay).sort();
+  const span = keys.length ? Math.max(1, Math.round((new Date(keys[keys.length - 1]) - new Date(keys[0])) / 864e5) + 1) : 0;
+  $("#cards").innerHTML = [
+    [num(v.length), "mensajes"], [num(Object.keys(users).length), "usuarios"], [num(words), "palabras"], [num(att), "adjuntos"],
+    [span ? (v.length / span).toFixed(1) : "0", "msgs / día"], [keys.length ? keys[0] : "—", "primer mensaje"], [keys.length ? keys[keys.length - 1] : "—", "último mensaje"]
+  ].map(c => `<div class="card"><b>${c[0]}</b><span>${c[1]}</span></div>`).join("");
+
+  const top = Object.entries(users).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, n]) => ({ id, n: (S.users[id] || {}).name || id, v: n }));
+  let series;
+  if (keys.length && span > 60) {
+    const mo = {}; keys.forEach(k => { const mk = k.slice(0, 7); mo[mk] = (mo[mk] || 0) + byDay[k]; });
+    series = Object.keys(mo).sort().map(k => ({ n: k, v: mo[k] }));
+  } else series = keys.map(k => ({ n: k, v: byDay[k] }));
+  const wd = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+  $("#panels").innerHTML =
+    `<div class="panel"><h3>Top usuarios</h3>${bars(top, true) || "—"}</div>` +
+    `<div class="panel"><h3>Actividad ${span > 60 ? "por mes" : "por día"}</h3>${cols(series)}<div class="lbls"><span>${series.length ? series[0].n : ""}</span><span>${series.length ? series[series.length - 1].n : ""}</span></div></div>` +
+    `<div class="panel"><h3>Por hora del día</h3>${cols(byHour.map((x, i) => ({ n: i + ":00", v: x })))}<div class="lbls"><span>0h</span><span>12h</span><span>23h</span></div></div>` +
+    `<div class="panel"><h3>Por día de la semana</h3>${cols(byWd.map((x, i) => ({ n: wd[i], v: x })))}<div class="lbls"><span>Lun</span><span>Jue</span><span>Dom</span></div></div>`;
 }
 
-$("f").addEventListener("submit", async ev => {
-  ev.preventDefault();
-  const st = $("status"), btn = $("go");
-  st.className = ""; $("actions").style.display = "none"; $("preview").replaceChildren();
-  btn.disabled = true;
-  let token = $("token").value.trim();
-  if ($("ttype").value === "Bot" && !token.startsWith("Bot ")) token = "Bot " + token;
-  const guild = $("guild").value.trim(), channel = $("channel").value.trim();
-  try {
-    const ch = await api(`/channels/${channel}`, token);
-    if (String(ch.guild_id) !== guild) throw new Error("El canal no pertenece a ese servidor.");
-    chanName = ch.name || channel;
-    messages = [];
-    let after = "0";
-    for (;;) {
-      st.textContent = `Descargando... ${messages.length} mensajes`;
-      const batch = await api(`/channels/${channel}/messages`, token, { limit: 100, after });
-      if (!batch.length) break;
-      batch.sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
-      messages.push(...batch);
-      after = batch[batch.length - 1].id;
-      if (batch.length < 100) break;
+/* ---------- Exportar ---------- */
+function download(name, text, type) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function exportName() {
+  const names = [...new Set(S.view.map(m => m._channel))];
+  return (names.length === 1 ? names[0] : "discord-export").replace(/[^\w-]+/g, "_");
+}
+function exportView(kind) {
+  if (!S.view.length) return status("No hay mensajes para exportar con los filtros actuales.", "err");
+  const rows = [...S.view].sort(idCmp), base = exportName();
+  if (kind === "json") return download(base + ".json", JSON.stringify(rows, null, 2), "application/json");
+  if (kind === "txt") return download(base + ".txt", rows.map(m => `[${fmt(m.timestamp)}]${multiChan() ? " #" + m._channel : ""} ${dn(m)}: ${m.content || ""}${(m.attachments || []).map(a => " " + a.url).join("")}`).join("\n"), "text/plain");
+  if (kind === "csv") {
+    const q = s => '"' + String(s == null ? "" : s).replace(/"/g, '""') + '"';
+    const head = ["fecha", "canal", "autor", "id_autor", "mensaje", "adjuntos", "reacciones", "id_mensaje"];
+    const lines = rows.map(m => [m.timestamp, m._channel, dn(m), m.author.id, m.content, (m.attachments || []).map(a => a.url).join(" "), (m.reactions || []).map(r => (r.emoji.name || "?") + "x" + r.count).join(" "), m.id].map(q).join(","));
+    return download(base + ".csv", "﻿" + head.join(",") + "\n" + lines.join("\n"), "text/csv");
+  }
+  if (kind === "html") {
+    const mc = multiChan(); let prev = null, last = "", body = "";
+    for (const m of rows) {
+      const dk = dayKey(m.timestamp);
+      if (dk !== last) { body += `<div class="day"><span>${dayLbl(m.timestamp)}</span></div>`; last = dk; prev = null; }
+      const compact = prev && prev.author.id === m.author.id && prev._cid === m._cid && Math.abs(new Date(m.timestamp) - new Date(prev.timestamp)) < 420000 && !m.type;
+      body += msgHtml(m, compact, mc); prev = m;
     }
-    messages.sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
-    st.textContent = `#${chanName}: ${messages.length} mensajes en orden cronológico.`;
-    render(messages);
-    $("actions").style.display = "flex";
-  } catch (e) {
-    st.className = "err"; st.textContent = e.message;
-  } finally { btn.disabled = false; }
-});
+    const css = document.querySelector("style").textContent;
+    const doc = `<!doctype html><html lang="es" data-theme="${document.documentElement.dataset.theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(base)}</title><style>${css}</style></head><body><div class="top"><div class="logo">D</div><h1>${esc(base)} · ${num(rows.length)} mensajes</h1></div><main style="max-width:920px;margin:0 auto">${body}</main><script>document.addEventListener("click",function(e){var s=e.target.closest(".spoiler");if(s)s.classList.toggle("on")})<\/script></body></html>`;
+    return download(base + ".html", doc, "text/html");
+  }
+}
+document.querySelectorAll("[data-x]").forEach(b => b.onclick = () => exportView(b.dataset.x));
 
-$("dlJson").onclick = () => download(chanName + ".json", JSON.stringify(messages, null, 2), "application/json");
-$("dlHtml").onclick = () => {
-  const css = document.querySelector("style").textContent;
-  const doc = `<!doctype html><html><head><meta charset="utf-8"><title>#${chanName}</title><style>${css}</style></head><body><header><h1>#${chanName}</h1></header><div class="wrap">${$("preview").innerHTML}</div></body></html>`;
-  download(chanName + ".html", doc, "text/html");
-};
+/* ---------- Interacción general ---------- */
+document.addEventListener("click", e => {
+  const sp = e.target.closest(".spoiler"); if (sp) sp.classList.toggle("on");
+  const nm = e.target.closest(".name[data-a]"); if (nm) isolate(nm.dataset.a);
+  const hb = e.target.closest(".hb[data-u]"); if (hb) isolate(hb.dataset.u);
+});
+window.addEventListener("scroll", () => { $("#top").style.display = scrollY > 600 ? "block" : "none"; });
+$("#top").onclick = () => scrollTo({ top: 0 });
+
+function setTheme(t) { document.documentElement.dataset.theme = t; try { localStorage.setItem("theme", t); } catch (_) {} }
+$("#theme").onclick = () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+try { const t = localStorage.getItem("theme"); if (t) setTheme(t); } catch (_) {}
 </script>
 </body>
 </html>
