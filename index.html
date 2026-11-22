@@ -156,7 +156,8 @@ mark{background:var(--hl);color:inherit;border-radius:3px}
         </div>
         <div class="btns"><button class="sec" id="loadCh">Cargar canales del servidor</button></div>
         <div id="chList" class="list" hidden></div>
-        <div><label class="l">O escribe ID(s) de canal (separados por coma)</label><input id="chIds" type="text" autocomplete="off" placeholder="123456789, 987654321"></div>
+        <div><label class="l">O escribe ID(s) de canal, hilo, foro o categoría (separados por coma)</label><input id="chIds" type="text" autocomplete="off" placeholder="123456789, 987654321"></div>
+        <label class="chk"><input type="checkbox" id="inclThreads" checked> Incluir hilos de los canales de texto y anuncios (activos y archivados). Los foros y canales multimedia siempre exportan sus publicaciones.</label>
         <div class="warn">El token se usa solo en tu navegador y se envía únicamente a discord.com; no se guarda. Un token de usuario infringe los Términos de Servicio de Discord y puede suspender tu cuenta.</div>
       </div>
       <div class="nav"><button id="impBtn" class="sec">Abrir un JSON exportado</button><input id="imp" type="file" accept=".json,application/json" hidden><span style="flex:1"></span><button class="sec goBtn">Extraer ahora</button><button id="n1">Siguiente →</button></div>
@@ -245,7 +246,7 @@ const $ = s => document.querySelector(s);
 const API = "https://discord.com/api/v10";
 const EPOCH = 1420070400000n;
 const PAGE = 200;
-const S = { all: [], view: [], chan: {}, roles: {}, users: {}, cancel: false, shown: 0, prev: null, lastDay: "", authors: new Set(), chans: new Set(), terms: [] };
+const S = { all: [], view: [], chan: {}, chObj: {}, gch: {}, active: {}, roles: {}, users: {}, cancel: false, shown: 0, prev: null, lastDay: "", authors: new Set(), chans: new Set(), terms: [] };
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const snow = ms => ((BigInt(ms) - EPOCH) << 22n).toString();
@@ -286,36 +287,124 @@ function status(txt, kind, busy) {
   $("#stTxt").textContent = txt;
 }
 
+/* ---------- Tipos de canal ---------- */
+// 0 texto · 2 voz · 4 categoría · 5 anuncios · 10/11/12 hilos · 13 escenario · 15 foro · 16 multimedia
+const ICON = { 0: "#", 2: "🔊", 5: "📢", 10: "🧵", 11: "🧵", 12: "🔒", 13: "🎙️", 15: "💬", 16: "🖼️" };
+const TLBL = { 2: "voz", 13: "escenario", 15: "foro", 16: "multimedia" };
+const HAS_MSGS = new Set([0, 2, 5, 10, 11, 12, 13]);   // tienen mensajes propios
+const HAS_THREADS = new Set([0, 5, 15, 16]);           // pueden tener hilos/publicaciones
+const isThread = t => t === 10 || t === 11 || t === 12;
+const isVoice = t => t === 2 || t === 13;
+const byPos = (a, b) => (a.position - b.position) || idCmp(a, b);
+
+async function guildChannels(g) {
+  if (!S.gch[g]) {
+    const chs = await api(`/guilds/${g}/channels`);
+    chs.forEach(c => { S.chan[c.id] = c.name; S.chObj[c.id] = c; });
+    S.gch[g] = chs;
+  }
+  return S.gch[g];
+}
+
+// Hilos de un canal: activos (del servidor) + archivados públicos (+ privados si hay permiso).
+async function threadsOf(ch, g, warns) {
+  const map = new Map();
+  if (g) {
+    if (!S.active[g]) {
+      try { S.active[g] = (await api(`/guilds/${g}/threads/active`)).threads || []; }
+      catch (e) { if (S.cancel) throw e; S.active[g] = []; }
+    }
+    S.active[g].filter(t => t.parent_id === ch.id).forEach(t => map.set(t.id, t));
+  }
+  for (const kind of ch.type === 0 ? ["public", "private"] : ["public"]) {
+    try {
+      let before = null;
+      for (;;) {
+        const d = await api(`/channels/${ch.id}/threads/archived/${kind}`, before ? { limit: 100, before } : { limit: 100 });
+        const th = d.threads || [];
+        th.forEach(t => map.set(t.id, t));
+        if (!d.has_more || !th.length) break;
+        before = th[th.length - 1].thread_metadata.archive_timestamp;
+      }
+    } catch (e) {
+      if (S.cancel) throw e;
+      // los privados archivados requieren "Gestionar hilos": si falla, se omiten en silencio
+      if (kind === "public") warns.push(`hilos archivados de #${ch.name}: ${e.message}`);
+    }
+  }
+  return [...map.values()].sort(idCmp);
+}
+
+// Convierte los IDs elegidos (canales, categorías, foros, hilos) en la lista final de canales a leer.
+async function resolveTargets(ids, guild, withThreads, warns) {
+  const out = [], seen = new Set(), queue = [...ids];
+  const add = (id, name) => { if (!seen.has(id)) { seen.add(id); out.push({ id, name }); S.chan[id] = name; } };
+  while (queue.length && !S.cancel) {
+    const item = queue.shift();
+    let ch = typeof item === "object" ? item : S.chObj[item];
+    try {
+      if (!ch) ch = S.chObj[item] = await api(`/channels/${item}`);
+      const g = String(ch.guild_id || "");
+      if (guild && g !== guild) { warns.push(`${ch.id}: no pertenece a ese servidor`); continue; }
+      if (g) { try { await guildChannels(g); } catch (e) { if (S.cancel) break; } }
+      if (ch.type === 4) {
+        const kids = (S.gch[g] || []).filter(c => c.parent_id === ch.id).sort((a, b) => isVoice(a.type) - isVoice(b.type) || byPos(a, b));
+        if (!kids.length) warns.push(`categoría ${ch.name}: sin canales accesibles`);
+        queue.unshift(...kids);
+        continue;
+      }
+      if (!ICON[ch.type]) { warns.push(`${ch.name || ch.id}: tipo de canal ${ch.type} no soportado`); continue; }
+      const name = isThread(ch.type) ? `${S.chan[ch.parent_id] || "hilo"} › ${ch.name}` : (ch.name || ch.id);
+      if (HAS_MSGS.has(ch.type)) add(ch.id, name);
+      if (HAS_THREADS.has(ch.type) && (withThreads || !HAS_MSGS.has(ch.type))) {
+        status(`Buscando hilos de #${ch.name}...`, "", true);
+        for (const t of await threadsOf(ch, g, warns)) add(t.id, `${ch.name} › ${t.name}`);
+      }
+    } catch (e) { if (S.cancel) break; warns.push(`${ch ? ch.name || ch.id : item}: ${e.message}`); }
+  }
+  return out;
+}
+
 /* ---------- Canales del servidor ---------- */
 $("#loadCh").onclick = async () => {
   const g = $("#guild").value.trim();
   if (!g || !getToken()) return status("Escribe el token y el ID del servidor.", "err");
-  S.cancel = false;
+  S.cancel = false; S.gch = {}; S.active = {}; S.chObj = {};
   try {
     status("Cargando canales...", "", true);
-    const chs = await api(`/guilds/${g}/channels`);
+    const chs = await guildChannels(g);
     try { for (const r of await api(`/guilds/${g}/roles`)) S.roles[r.id] = r.name; } catch (_) {}
-    const cats = {}; chs.filter(c => c.type === 4).forEach(c => cats[c.id] = c.name);
-    chs.forEach(c => S.chan[c.id] = c.name);
-    const text = chs.filter(c => c.type === 0 || c.type === 5).sort((a, b) => a.position - b.position);
+    const cats = chs.filter(c => c.type === 4).sort(byPos);
+    const items = chs.filter(c => ICON[c.type] && !isThread(c.type));
     const box = $("#chList"); box.replaceChildren(); box.hidden = false;
-    let last = null;
-    for (const c of text) {
-      const cat = cats[c.parent_id] || "Sin categoría";
-      if (cat !== last) { const h = document.createElement("div"); h.className = "grp"; h.textContent = cat; box.append(h); last = cat; }
-      const l = document.createElement("label"); l.className = "chk";
-      l.innerHTML = `<input type="checkbox" value="${esc(c.id)}"> # ${esc(c.name)}`;
-      box.append(l);
+    let total = 0;
+    for (const grp of [{ id: "", name: "Sin categoría" }, ...cats]) {
+      const list = items.filter(c => (c.parent_id || "") === grp.id).sort((a, b) => isVoice(a.type) - isVoice(b.type) || byPos(a, b));
+      if (!list.length) continue;
+      const h = document.createElement("label"); h.className = "grp chk";
+      h.innerHTML = `<input type="checkbox" data-cat="${esc(grp.id)}"> ${esc(grp.name)}`;
+      box.append(h);
+      for (const c of list) {
+        const l = document.createElement("label"); l.className = "chk";
+        l.innerHTML = `<input type="checkbox" value="${esc(c.id)}" data-parent="${esc(grp.id)}"> ${ICON[c.type]} ${esc(c.name)}${TLBL[c.type] ? `<span class="n">${TLBL[c.type]}</span>` : ""}`;
+        box.append(l);
+      }
+      total += list.length;
     }
-    status(`${text.length} canales de texto cargados. Marca los que quieras exportar.`, "ok");
+    // marcar una categoría marca/desmarca todos sus canales
+    box.onchange = e => {
+      const cat = e.target.dataset.cat;
+      if (cat !== undefined) box.querySelectorAll(`input[data-parent="${cat}"]`).forEach(i => i.checked = e.target.checked);
+    };
+    status(`${total} canales cargados (texto, anuncios, voz, escenario, foros y multimedia). Marca los que quieras exportar.`, "ok");
   } catch (e) { status(e.message, "err"); }
 };
 
 /* ---------- Extracción ---------- */
 async function startExtract() {
   const guild = $("#guild").value.trim();
-  const ids = [...new Set([...document.querySelectorAll("#chList input:checked")].map(i => i.value)
-    .concat($("#chIds").value.split(/[\s,;]+/).filter(x => /^\d+$/.test(x))))];
+  const ids = [...new Set([...document.querySelectorAll("#chList input[value]:checked")].map(i => i.value)
+    .concat($("#chIds").value.split(/[\s,;]+/)).filter(x => /^\d+$/.test(x)))];
   if (!getToken()) { gotoStep(1); return status("Falta el token.", "err"); }
   if (!ids.length) { gotoStep(1); return status("Elige o escribe al menos un canal.", "err"); }
   const from = $("#dlFrom").value, to = $("#dlTo").value;
@@ -327,15 +416,13 @@ async function startExtract() {
   showView("result"); $("#work").hidden = true;
   const out = [], warns = [];
   try {
-    for (let i = 0; i < ids.length && !S.cancel; i++) {
-      const id = ids[i];
-      let ch;
-      try { ch = await api(`/channels/${id}`); } catch (e) { if (S.cancel) break; warns.push(`${id}: ${e.message}`); continue; }
-      if (guild && String(ch.guild_id) !== guild) { warns.push(`${id}: no pertenece a ese servidor`); continue; }
-      const name = S.chan[id] = ch.name || id;
+    status("Resolviendo canales...", "", true);
+    const targets = await resolveTargets(ids, guild, $("#inclThreads").checked, warns);
+    for (let i = 0; i < targets.length && !S.cancel; i++) {
+      const { id, name } = targets[i];
       let after = after0, n = 0, done = false;
       while (!done && !S.cancel) {
-        status(`Canal ${i + 1}/${ids.length} · #${name} · ${num(n)} mensajes (${num(out.length)} en total)`, "", true);
+        status(`Canal ${i + 1}/${targets.length} · #${name} · ${num(n)} mensajes (${num(out.length)} en total)`, "", true);
         let b;
         try { b = await api(`/channels/${id}/messages`, { limit: 100, after }); } catch (e) { if (!S.cancel) warns.push(`#${name}: ${e.message}`); break; }
         if (!b.length) break;
