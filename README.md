@@ -30,6 +30,22 @@ Si no defines `DISCORD_TOKEN`, el script lo pedirá de forma oculta. Abre `expor
 
 Los hilos **privados archivados** solo se exportan si el bot tiene el permiso *Gestionar hilos*; si no, se omiten sin error. En `index.html`, marcar una categoría marca todos sus canales.
 
+## Descargar todo (foros incluidos) en un ZIP
+
+En `index.html`, después de extraer, pulsa **⬇ ZIP completo** en el panel *Exportar*. El ZIP queda así:
+
+```
+index.html                 ← índice con enlaces a cada canal/publicación
+todo.json                  ← todos los mensajes juntos
+chat/chat.html|json|txt    ← un canal normal
+tips-and-advice/           ← un foro
+  Nombre del post/
+    chat.html|json|txt
+    adjuntos/              ← imágenes y archivos del post
+```
+
+Los HTML usan los adjuntos locales, así que se ven sin conexión. Respeta los filtros activos. Desmarca *Incluir imágenes y archivos adjuntos* si solo quieres el texto.
+
 ## Seguridad
 
 - El token nunca se guarda ni se sube al repositorio. No lo pegues en issues ni commits.
