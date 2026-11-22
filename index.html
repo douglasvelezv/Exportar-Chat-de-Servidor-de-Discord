@@ -220,6 +220,9 @@ mark{background:var(--hl);color:inherit;border-radius:3px}
 
   <details open id="xBox" hidden><summary>3 · Exportar (respeta filtros)</summary><div class="box">
     <div class="btns"><button class="sec" data-x="json">JSON</button><button class="sec" data-x="html">HTML</button><button class="sec" data-x="csv">CSV</button><button class="sec" data-x="txt">TXT</button></div>
+    <div class="btns"><button data-x="zip">⬇ ZIP completo</button></div>
+    <label class="chk"><input type="checkbox" id="zipAtt" checked> Incluir imágenes y archivos adjuntos</label>
+    <p class="hint">El ZIP crea una carpeta por canal y, dentro de cada foro, una carpeta por publicación (HTML, JSON y TXT). Los adjuntos se guardan en <code>adjuntos/</code> para verlo todo sin conexión.</p>
   </div></details>
 </aside>
 
@@ -596,7 +599,7 @@ const fmtSize = b => b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1
 const safe = u => /^https?:\/\//i.test(u) ? esc(u) : "#";
 
 function attHtml(at) {
-  const u = safe(at.url), ct = at.content_type || "";
+  const u = at._local ? esc(at._local) : safe(at.url), ct = at.content_type || "";
   if (ct.startsWith("image/")) return `<div class="att"><a href="${u}" target="_blank" rel="noopener"><img src="${u}" loading="lazy" alt="${esc(at.filename)}"></a></div>`;
   if (ct.startsWith("video/")) return `<div class="att"><video src="${u}" controls preload="none"></video></div>`;
   if (ct.startsWith("audio/")) return `<div class="att"><audio src="${u}" controls preload="none"></audio></div>`;
@@ -746,32 +749,116 @@ function exportView(kind) {
   if (!S.view.length) return status("No hay mensajes para exportar con los filtros actuales.", "err");
   const rows = [...S.view].sort(idCmp), base = exportName();
   if (kind === "json") return download(base + ".json", JSON.stringify(rows, null, 2), "application/json");
-  if (kind === "txt") return download(base + ".txt", rows.map(m => `[${fmt(m.timestamp)}]${multiChan() ? " #" + m._channel : ""} ${dn(m)}: ${m.content || ""}${(m.attachments || []).map(a => " " + a.url).join("")}`).join("\n"), "text/plain");
+  if (kind === "txt") return download(base + ".txt", txtLines(rows, multiChan()), "text/plain");
   if (kind === "csv") {
     const q = s => '"' + String(s == null ? "" : s).replace(/"/g, '""') + '"';
     const head = ["fecha", "canal", "autor", "id_autor", "mensaje", "adjuntos", "reacciones", "id_mensaje"];
     const lines = rows.map(m => [m.timestamp, m._channel, dn(m), m.author.id, m.content, (m.attachments || []).map(a => a.url).join(" "), (m.reactions || []).map(r => (r.emoji.name || "?") + "x" + r.count).join(" "), m.id].map(q).join(","));
     return download(base + ".csv", "﻿" + head.join(",") + "\n" + lines.join("\n"), "text/csv");
   }
-  if (kind === "html") {
-    const mc = multiChan(); let prev = null, last = "", body = "";
-    for (const m of rows) {
-      const dk = dayKey(m.timestamp);
-      if (dk !== last) { body += `<div class="day"><span>${dayLbl(m.timestamp)}</span></div>`; last = dk; prev = null; }
-      const compact = prev && prev.author.id === m.author.id && prev._cid === m._cid && Math.abs(new Date(m.timestamp) - new Date(prev.timestamp)) < 420000 && !m.type;
-      body += msgHtml(m, compact, mc); prev = m;
-    }
-    const css = document.querySelector("style").textContent;
-    const doc = `<!doctype html><html lang="es" data-theme="${document.documentElement.dataset.theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(base)}</title><style>${css}</style></head><body><div class="top"><div class="logo">D</div><h1>${esc(base)} · ${num(rows.length)} mensajes</h1></div><main style="max-width:920px;margin:0 auto">${body}</main><script>document.addEventListener("click",function(e){var s=e.target.closest(".spoiler");if(s)s.classList.toggle("on")})<\/script></body></html>`;
-    return download(base + ".html", doc, "text/html");
+  if (kind === "zip") return exportZip(rows);
+  if (kind === "html") return download(base + ".html", htmlDoc(rows, base, multiChan()), "text/html");
+}
+function txtLines(rows, mc) {
+  return rows.map(m => `[${fmt(m.timestamp)}]${mc ? " #" + m._channel : ""} ${dn(m)}: ${m.content || ""}${(m.attachments || []).map(a => " " + (a._local || a.url)).join("")}`).join("\n");
+}
+function htmlDoc(rows, base, mc) {
+  let prev = null, last = "", body = "";
+  for (const m of rows) {
+    const dk = dayKey(m.timestamp);
+    if (dk !== last) { body += `<div class="day"><span>${dayLbl(m.timestamp)}</span></div>`; last = dk; prev = null; }
+    const compact = prev && prev.author.id === m.author.id && prev._cid === m._cid && Math.abs(new Date(m.timestamp) - new Date(prev.timestamp)) < 420000 && !m.type;
+    body += msgHtml(m, compact, mc); prev = m;
   }
+  const css = document.querySelector("style").textContent;
+  return `<!doctype html><html lang="es" data-theme="${document.documentElement.dataset.theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(base)}</title><style>${css}</style></head><body><div class="top"><div class="logo">D</div><h1>${esc(base)} · ${num(rows.length)} mensajes</h1></div><main style="max-width:920px;margin:0 auto">${body}</main><script>document.addEventListener("click",function(e){var s=e.target.closest(".spoiler");if(s)s.classList.toggle("on")})<\/script></body></html>`;
+}
+
+/* ---------- ZIP sin dependencias (método "store") ---------- */
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function makeZip(files) {
+  const enc = new TextEncoder(), parts = [], cen = [];
+  let off = 0;
+  const d = new Date(), dt = ((d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1)), dd = (((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate());
+  for (const f of files) {
+    const name = enc.encode(f.name), data = typeof f.data === "string" ? enc.encode(f.data) : f.data, crc = crc32(data);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint16(10, dt, true); h.setUint16(12, dd, true); h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true);
+    h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+    parts.push(h, name, data);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
+    c.setUint16(12, dt, true); c.setUint16(14, dd, true); c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true);
+    c.setUint16(28, name.length, true); c.setUint32(42, off, true);
+    cen.push(c, name);
+    off += 30 + name.length + data.length;
+  }
+  const cenSize = cen.reduce((a, x) => a + x.byteLength, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cenSize, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...cen, e], { type: "application/zip" });
+}
+
+const fsName = s => (String(s).replace(/[\\/:*?"<>|\x00-\x1f]+/g, "_").replace(/^[\s.]+|[\s.]+$/g, "").slice(0, 80) || "sin_nombre");
+async function exportZip(rows) {
+  const withAtt = $("#zipAtt").checked, files = [], used = new Set(), warns = [];
+  const groups = new Map();
+  for (const m of rows) { if (!groups.has(m._cid)) groups.set(m._cid, []); groups.get(m._cid).push(m); }
+  // carpeta: canal/  o  foro/publicación/
+  const dirs = new Map();
+  for (const [cid, list] of groups) {
+    let dir = list[0]._channel.split(" › ").map(fsName).join("/"), d = dir, k = 2;
+    while (used.has(d)) d = dir + "_" + k++;
+    used.add(d); dirs.set(cid, d);
+  }
+  const total = withAtt ? rows.reduce((a, m) => a + (m.attachments || []).length, 0) : 0;
+  let done = 0, bytes = 0;
+  S.cancel = false; $("#cancel").hidden = false;
+  try {
+    const index = [];
+    for (const [cid, list] of groups) {
+      const dir = dirs.get(cid), copy = JSON.parse(JSON.stringify(list));
+      for (const m of copy) { m._channel = list[0]._channel; m._cid = cid; }
+      if (withAtt) {
+        const names = new Set();
+        for (const m of copy) for (const at of m.attachments || []) {
+          if (S.cancel) throw new Error("Cancelado");
+          status(`Descargando adjuntos ${num(++done)}/${num(total)} · ${(bytes / 1048576).toFixed(1)} MB`, "", true);
+          let fn = fsName(at.filename || at.id), base = fn, k = 2;
+          while (names.has(fn)) fn = base.replace(/(\.[^.]*)?$/, `_${k++}$1`);
+          try {
+            const r = await fetch(at.url);
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            const data = new Uint8Array(await r.arrayBuffer());
+            names.add(fn); bytes += data.length;
+            files.push({ name: `${dir}/adjuntos/${fn}`, data });
+            at._local = `adjuntos/${fn}`;
+          } catch (e) { warns.push(`${at.filename}: ${e.message}`); }
+        }
+      }
+      const title = list[0]._channel;
+      files.push({ name: `${dir}/chat.html`, data: htmlDoc(copy, title, false) });
+      files.push({ name: `${dir}/chat.json`, data: JSON.stringify(copy, null, 2) });
+      files.push({ name: `${dir}/chat.txt`, data: txtLines(copy, false) });
+      index.push(`<li><a href="${esc(dir.split("/").map(encodeURIComponent).join("/"))}/chat.html"># ${esc(title)}</a> · ${num(list.length)} mensajes</li>`);
+    }
+    files.push({ name: "index.html", data: `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Exportación de Discord</title><style>body{font-family:system-ui,sans-serif;background:#313338;color:#dbdee1;max-width:900px;margin:30px auto;padding:0 16px}a{color:#00a8fc}li{margin:4px 0}</style></head><body><h1>Exportación de Discord</h1><p>${num(rows.length)} mensajes · ${num(groups.size)} canales/publicaciones · ${esc(new Date().toLocaleString("es"))}</p><ul>${index.join("")}</ul></body></html>` });
+    files.push({ name: "todo.json", data: JSON.stringify(rows, null, 2) });
+    status("Creando ZIP...", "", true);
+    const blob = makeZip(files), a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = exportName() + ".zip"; document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    status(`ZIP listo: ${num(groups.size)} carpetas, ${num(rows.length)} mensajes${withAtt ? `, ${num(done - warns.length)} adjuntos (${(bytes / 1048576).toFixed(1)} MB)` : ""}.` + (warns.length ? ` No se pudieron bajar ${warns.length} adjuntos (enlaces caducados o sin acceso).` : ""), warns.length ? "" : "ok");
+  } catch (e) { status(e.message, "err"); }
+  finally { $("#cancel").hidden = true; }
 }
 document.querySelectorAll("[data-x]").forEach(b => b.onclick = () => exportView(b.dataset.x));
 
 /* ---------- Asistente por pasos ---------- */
 function channelIds() {
-  return [...new Set([...document.querySelectorAll("#chList input:checked")].map(i => i.value)
-    .concat($("#chIds").value.split(/[\s,;]+/).filter(x => /^\d+$/.test(x))))];
+  return [...new Set([...document.querySelectorAll("#chList input[value]:checked")].map(i => i.value)
+    .concat($("#chIds").value.split(/[\s,;]+/)).filter(x => /^\d+$/.test(x)))];
 }
 function gotoStep(n) {
   document.querySelectorAll(".step").forEach(x => x.hidden = +x.dataset.s !== n);
